@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n/context';
 import { ZONES } from '@/lib/zones';
-import { Zone, District } from '@/lib/types';
+import { Zone, District, Language } from '@/lib/types';
 
 const DISTRICT_COLORS: Record<District, string> = {
   north: 'bg-orange-500/20 text-orange-400',
@@ -17,19 +17,18 @@ const DISTRICT_COLORS: Record<District, string> = {
   judea_samaria: 'bg-purple-500/20 text-purple-400',
 };
 
-const DISTRICT_LABELS: Record<District, { he: string; en: string; ar: string }> = {
-  north: { he: '\u05E6\u05E4\u05D5\u05DF', en: 'North', ar: '\u0634\u0645\u0627\u0644' },
-  haifa: { he: '\u05D7\u05D9\u05E4\u05D4', en: 'Haifa', ar: '\u062D\u064A\u0641\u0627' },
-  center: { he: '\u05DE\u05E8\u05DB\u05D6', en: 'Center', ar: '\u0627\u0644\u0645\u0631\u0643\u0632' },
-  tel_aviv: { he: '\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1', en: 'Tel Aviv', ar: '\u062A\u0644 \u0623\u0628\u064A\u0628' },
-  jerusalem: { he: '\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD', en: 'Jerusalem', ar: '\u0627\u0644\u0642\u062F\u0633' },
-  south: { he: '\u05D3\u05E8\u05D5\u05DD', en: 'South', ar: '\u062C\u0646\u0648\u0628' },
-  sharon: { he: '\u05E9\u05E8\u05D5\u05DF', en: 'Sharon', ar: '\u0634\u0627\u0631\u0648\u0646' },
-  judea_samaria: { he: '\u05D9\u05D4\u05D5\u05D3\u05D4 \u05D5\u05E9\u05D5\u05DE\u05E8\u05D5\u05DF', en: 'Judea & Samaria', ar: '\u064A\u0647\u0648\u062F\u0627 \u0648\u0627\u0644\u0633\u0627\u0645\u0631\u0629' },
+const DISTRICT_LABELS: Record<District, Record<Language, string>> = {
+  north: { he: '\u05E6\u05E4\u05D5\u05DF', en: 'North' },
+  haifa: { he: '\u05D7\u05D9\u05E4\u05D4', en: 'Haifa' },
+  center: { he: '\u05DE\u05E8\u05DB\u05D6', en: 'Center' },
+  tel_aviv: { he: '\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1', en: 'Tel Aviv' },
+  jerusalem: { he: '\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD', en: 'Jerusalem' },
+  south: { he: '\u05D3\u05E8\u05D5\u05DD', en: 'South' },
+  sharon: { he: '\u05E9\u05E8\u05D5\u05DF', en: 'Sharon' },
+  judea_samaria: { he: '\u05D9\u05D4\u05D5\u05D3\u05D4 \u05D5\u05E9\u05D5\u05DE\u05E8\u05D5\u05DF', en: 'Judea & Samaria' },
 };
 
-function getZoneName(zone: Zone, lang: string): string {
-  if (lang === 'ar') return zone.arabicName;
+function getZoneName(zone: Zone, lang: Language): string {
   if (lang === 'en') return zone.englishName;
   return zone.hebrewName;
 }
@@ -46,14 +45,30 @@ export default function LocationSearch() {
   const results = useMemo(() => {
     if (query.trim().length === 0) return [];
     const q = query.trim().toLowerCase();
-    return ZONES.filter((zone) => {
+    const raw = query.trim();
+
+    // Separate regions and cities
+    const matchingRegions: Zone[] = [];
+    const matchingCities: Zone[] = [];
+
+    for (const zone of ZONES) {
       const name = getZoneName(zone, language).toLowerCase();
-      return (
+      const matches =
         name.includes(q) ||
-        zone.hebrewName.includes(query.trim()) ||
-        zone.englishName.toLowerCase().includes(q)
-      );
-    }).slice(0, 8);
+        zone.hebrewName.includes(raw) ||
+        zone.englishName.toLowerCase().includes(q);
+
+      if (matches) {
+        if (zone.isRegion) {
+          matchingRegions.push(zone);
+        } else {
+          matchingCities.push(zone);
+        }
+      }
+    }
+
+    // Regions first, then cities, max 8 total
+    return [...matchingRegions, ...matchingCities].slice(0, 8);
   }, [query, language]);
 
   const selectZone = useCallback(
@@ -141,11 +156,21 @@ export default function LocationSearch() {
                     : 'hover:bg-indigo-500/10'
                 }`}
               >
-                <span className="text-slate-100">{getZoneName(zone, language)}</span>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ms-3 ${DISTRICT_COLORS[zone.district]}`}
-                >
-                  {DISTRICT_LABELS[zone.district][language]}
+                <span className="text-slate-100 flex items-center gap-2">
+                  {zone.isRegion && <span className="text-indigo-400 text-xs">{'\uD83D\uDCCD'}</span>}
+                  {getZoneName(zone, language)}
+                </span>
+                <span className="flex items-center gap-2">
+                  {zone.isRegion && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 whitespace-nowrap">
+                      {t.region}
+                    </span>
+                  )}
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${DISTRICT_COLORS[zone.district]}`}
+                  >
+                    {DISTRICT_LABELS[zone.district][language]}
+                  </span>
                 </span>
               </button>
             ))

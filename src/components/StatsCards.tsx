@@ -1,0 +1,104 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useLanguage } from '@/lib/i18n/context';
+import { RiskResult } from '@/lib/types';
+
+interface StatsCardsProps {
+  risk: RiskResult;
+}
+
+function formatTimeSince(totalSeconds: number, t: ReturnType<typeof useLanguage>['t']): string {
+  if (totalSeconds < 0) return '\u2014';
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+
+  if (h > 0) return `${h}${t.hours} ${m}${t.minutesShort}`;
+  if (m > 0) return `${m}${t.minutesShort} ${s}${t.secondsShort}`;
+  return `${s}${t.secondsShort}`;
+}
+
+function getTimeSinceColor(minutes: number): string {
+  if (minutes < 0) return 'text-slate-400';
+  if (minutes < 30) return 'text-risk-red';
+  if (minutes < 120) return 'text-risk-yellow';
+  return 'text-risk-green';
+}
+
+function getVolumeColor(count: number): string {
+  if (count <= 3) return 'text-risk-green';
+  if (count <= 10) return 'text-risk-yellow';
+  if (count <= 20) return 'text-risk-orange';
+  return 'text-risk-red';
+}
+
+export default function StatsCards({ risk }: StatsCardsProps) {
+  const { t } = useLanguage();
+  const [secondsSinceLast, setSecondsSinceLast] = useState(
+    risk.timeSinceLastMinutes >= 0 ? risk.timeSinceLastMinutes * 60 : -1
+  );
+
+  // Tick up every second
+  useEffect(() => {
+    if (risk.timeSinceLastMinutes < 0) {
+      setSecondsSinceLast(-1);
+      return;
+    }
+    setSecondsSinceLast(risk.timeSinceLastMinutes * 60);
+    const id = setInterval(() => {
+      setSecondsSinceLast((prev) => (prev >= 0 ? prev + 1 : prev));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [risk.timeSinceLastMinutes]);
+
+  const avgHours = risk.avgIntervalMinutes / 60;
+  const avgDisplay = risk.avgIntervalMinutes >= 720
+    ? `12${t.hours}+`
+    : `${avgHours.toFixed(1)}${t.hours}`;
+
+  const trendConfig = {
+    increasing: { label: t.increasing, arrow: '\u2191', color: 'text-risk-red' },
+    decreasing: { label: t.decreasing, arrow: '\u2193', color: 'text-risk-green' },
+    stable: { label: t.stable, arrow: '\u2192', color: 'text-risk-yellow' },
+  };
+
+  const trendInfo = trendConfig[risk.trend];
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {/* Time since last */}
+      <div className="bg-surface-card rounded-xl p-4">
+        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.timeSinceLast}</p>
+        <p className={`text-2xl font-bold mt-1 tabular-nums ${getTimeSinceColor(secondsSinceLast / 60)}`}>
+          {secondsSinceLast < 0 ? t.noAlerts : formatTimeSince(secondsSinceLast, t)}
+        </p>
+      </div>
+
+      {/* Average interval */}
+      <div className="bg-surface-card rounded-xl p-4">
+        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.avgInterval}</p>
+        <p className={`text-2xl font-bold mt-1 ${risk.avgIntervalMinutes >= 720 ? 'text-risk-green' : 'text-slate-100'}`}>
+          {avgDisplay}
+        </p>
+      </div>
+
+      {/* 24h alert count */}
+      <div className="bg-surface-card rounded-xl p-4">
+        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.alertCount24h}</p>
+        <p className={`text-2xl font-bold mt-1 ${getVolumeColor(risk.volume24h)}`}>
+          {risk.volume24h}
+        </p>
+      </div>
+
+      {/* Trend */}
+      <div className="bg-surface-card rounded-xl p-4">
+        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.trend}</p>
+        <p className={`text-2xl font-bold mt-1 ${trendInfo.color}`}>
+          <span className="me-1">{trendInfo.arrow}</span>
+          {trendInfo.label}
+        </p>
+      </div>
+    </div>
+  );
+}

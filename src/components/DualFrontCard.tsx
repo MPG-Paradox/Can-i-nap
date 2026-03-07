@@ -1,0 +1,85 @@
+'use client';
+
+import { useLanguage } from '@/lib/i18n/context';
+import { DualFrontStatus, EscalationLevel } from '@/lib/types';
+
+interface DualFrontCardProps {
+  status: DualFrontStatus;
+}
+
+function getStatusBadge(level: EscalationLevel, t: ReturnType<typeof useLanguage>['t']): { text: string; className: string } {
+  switch (level) {
+    case 'calm':
+      return { text: t.calm, className: 'bg-risk-green/20 text-risk-green' };
+    case 'single_front':
+      return { text: t.singleFront, className: 'bg-risk-yellow/20 text-risk-yellow' };
+    case 'dual_front':
+      return { text: t.dualFrontActive, className: 'bg-risk-red/20 text-risk-red' };
+    case 'heavy_barrage':
+      return { text: t.heavyBarrage, className: 'bg-risk-dark-red/20 text-risk-red' };
+    case 'heavy_barrage_both':
+      return { text: t.heavyBarrageBoth, className: 'bg-risk-dark-red/20 text-risk-red' };
+  }
+}
+
+function getDescription(level: EscalationLevel, t: ReturnType<typeof useLanguage>['t']): string {
+  switch (level) {
+    case 'calm': return t.calm;
+    case 'single_front': return t.singleFront;
+    case 'dual_front': return t.dualFrontDesc;
+    case 'heavy_barrage': return t.heavyBarrage;
+    case 'heavy_barrage_both': return t.heavyBarrageBoth;
+  }
+}
+
+export default function DualFrontCard({ status }: DualFrontCardProps) {
+  const { t } = useLanguage();
+  const badge = getStatusBadge(status.escalationLevel, t);
+
+  const iranPercent = Math.min(100, (status.iranFront.alertsLast6h / 20) * 100);
+  const hezbollahPercent = Math.min(100, (status.hezbollahFront.alertsLast6h / 20) * 100);
+
+  return (
+    <div className="bg-surface-card rounded-2xl p-5">
+      {/* Status badge */}
+      <div className="mb-4">
+        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${badge.className}`}>
+          {badge.text}
+        </span>
+      </div>
+
+      {/* Iran front */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-sm text-slate-300">{'\uD83C\uDDEE\uD83C\uDDF7'} {t.iranFront}</span>
+          <span className="text-xs text-slate-400">{status.iranFront.alertsLast6h} {t.alertsLast6h}</span>
+        </div>
+        <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-red-500 transition-all duration-500"
+            style={{ width: `${iranPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Hezbollah front */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-sm text-slate-300">{'\uD83C\uDDF1\uD83C\uDDE7'} {t.hezbollahFront}</span>
+          <span className="text-xs text-slate-400">{status.hezbollahFront.alertsLast6h} {t.alertsLast6h}</span>
+        </div>
+        <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-orange-500 transition-all duration-500"
+            style={{ width: `${hezbollahPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Description */}
+      <p className="text-sm text-slate-400 mt-3">
+        {getDescription(status.escalationLevel, t)}
+      </p>
+    </div>
+  );
+}

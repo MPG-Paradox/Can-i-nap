@@ -18,15 +18,29 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('can-i-nap-lang') as Language | null;
-    if (saved && (saved === 'he' || saved === 'en' || saved === 'ar')) {
+    if (saved && (saved === 'he' || saved === 'en')) {
       setLanguageState(saved);
       applyLanguage(saved);
     }
   }, []);
 
   const applyLanguage = (lang: Language) => {
-    document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
+    const newDir = isRTL(lang) ? 'rtl' : 'ltr';
+    const body = document.body;
+
+    // Smooth the direction change to avoid layout jump
+    body.style.transition = 'opacity 100ms ease';
+    body.style.opacity = '0.97';
+
+    document.documentElement.dir = newDir;
     document.documentElement.lang = lang;
+
+    requestAnimationFrame(() => {
+      body.style.opacity = '1';
+      setTimeout(() => {
+        body.style.transition = '';
+      }, 150);
+    });
   };
 
   const setLanguage = useCallback((lang: Language) => {

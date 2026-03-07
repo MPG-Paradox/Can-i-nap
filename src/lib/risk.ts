@@ -1,13 +1,28 @@
 import { RiskInput, RiskResult, TrendDirection, OptimalWindow, Alert } from './types';
-import { findZoneByName } from './zones';
+import { findZoneByName, getZonesForRegion } from './zones';
 import { isDualFrontActive } from './dual-front';
 
 function matchesZone(alert: Alert, zoneId: string): boolean {
+  // Check if the zoneId is a region
+  const targetZone = findZoneByName(zoneId);
+  if (targetZone && targetZone.isRegion) {
+    const regionZones = getZonesForRegion(zoneId);
+    const regionNames = new Set(regionZones.map((z) => z.hebrewName));
+    return alert.cities.some((city) => {
+      // Check if city is in the region or matches a region city prefix
+      if (regionNames.has(city)) return true;
+      const zone = findZoneByName(city);
+      if (zone && regionNames.has(zone.hebrewName)) return true;
+      // Also check prefix matching for region cities
+      return targetZone.regionCities!.some(
+        (prefix) => city.includes(prefix) || prefix.includes(city)
+      );
+    });
+  }
+
   return alert.cities.some((city) => {
     const zone = findZoneByName(city);
-    const targetZone = findZoneByName(zoneId);
     if (!zone || !targetZone) {
-      // Fallback: check if city string contains zoneId or vice versa
       return city.includes(zoneId) || zoneId.includes(city);
     }
     return zone.hebrewName === targetZone.hebrewName;

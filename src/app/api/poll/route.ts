@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { fetchActiveAlert, fetchAlertHistory } from '@/lib/oref-client';
 import { classifyAlertSource } from '@/lib/zones';
-import { addAlert, getAlerts } from '@/lib/alert-store';
+import { addAlert, getAlerts, getRecentAlerts, toAlert } from '@/lib/alert-store';
 import { StoredAlert } from '@/lib/types';
+import { registerPreAlert } from '@/lib/pre-alert-tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,30 @@ export async function GET() {
 
   if (active && active.data && active.data.length > 0) {
     const id = active.id || Date.now().toString();
-    const source = classifyAlertSource(active.data);
+    const category = parseInt(active.cat, 10) || 1;
+    const now = new Date();
+
+    // Get recent alerts for classification context
+    const recentStored = getRecentAlerts(0.1); // last ~6 minutes
+    const recentAlerts = recentStored.map(toAlert);
+
+    // Register pre-alert if cat:14
+    if (category === 14) {
+      registerPreAlert(now, active.data);
+    }
+
+    const source = classifyAlertSource(
+      active.data,
+      category,
+      active.data.length,
+      now,
+      recentAlerts
+    );
 
     storedAlert = {
       id,
-      timestamp: new Date().toISOString(),
-      category: parseInt(active.cat, 10) || 1,
+      timestamp: now.toISOString(),
+      category,
       title: active.title,
       cities: active.data,
       source,
@@ -46,7 +65,12 @@ export async function GET() {
     const key = `${new Date(item.alertDate).toISOString()}_${cities.join(',')}`;
 
     if (!existingKeys.has(key)) {
-      const source = classifyAlertSource(cities);
+      const source = classifyAlertSource(
+        cities,
+        item.category,
+        cities.length,
+        new Date(item.alertDate)
+      );
       addAlert({
         id: `hist_${new Date(item.alertDate).getTime()}`,
         timestamp: new Date(item.alertDate).toISOString(),

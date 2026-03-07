@@ -3,17 +3,18 @@ export type ThreatSource = 'iran' | 'hezbollah' | 'both';
 export type AlertSource = 'iran' | 'hezbollah' | 'dual' | 'unknown';
 export type TrendDirection = 'increasing' | 'decreasing' | 'stable';
 export type EscalationLevel = 'calm' | 'single_front' | 'dual_front' | 'heavy_barrage' | 'heavy_barrage_both';
-export type Language = 'he' | 'en' | 'ar';
+export type Language = 'he' | 'en';
 
 export interface Zone {
   hebrewName: string;
   englishName: string;
-  arabicName: string;
   district: District;
   lat: number;
   lng: number;
   timeToShelterSeconds: number;
   threatSource: ThreatSource;
+  isRegion?: boolean;
+  regionCities?: string[];
 }
 
 export interface Alert {

@@ -6,7 +6,6 @@ import { Language } from '@/lib/types';
 const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'he', label: '\u05E2\u05D1' },
   { code: 'en', label: 'EN' },
-  { code: 'ar', label: '\u0639\u0631' },
 ];
 
 export default function LanguageToggle() {
