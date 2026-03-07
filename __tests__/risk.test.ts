@@ -214,6 +214,20 @@ describe('calculateNapRiskWeighted', () => {
     expect(Math.abs(result.riskPercent - expectedRisk)).toBeLessThanOrEqual(1);
   });
 
+  it('base-name matching: Jerusalem zone matches Jerusalem sub-zone alerts', () => {
+    const alerts = [
+      makeAlert(10, ['\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD - \u05DE\u05E8\u05DB\u05D6, \u05E8\u05DE\u05D5\u05EA']),
+    ];
+    const result = calculateNapRisk({
+      zoneId: '\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD - \u05DE\u05E8\u05DB\u05D6',
+      napDurationMinutes: 30,
+      alerts,
+      currentTime: now,
+    });
+    // "ירושלים" base name should match "ירושלים - מרכז, רמות"
+    expect(result.volume24h).toBeGreaterThan(0);
+  });
+
   it('All of Israel national mode does not filter alerts by city', () => {
     const alerts = [
       makeAlert(10, ['\u05D0\u05E9\u05D3\u05D5\u05D3 - \u05D0,\u05D1,\u05D3,\u05D4']),

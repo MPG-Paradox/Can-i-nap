@@ -36,12 +36,21 @@ function matchesZone(alert: Alert, zoneId: string, isNational: boolean): boolean
     });
   }
 
+  // Extract base city name (before " - ") for broader matching
+  // e.g. "ירושלים - מרכז" → "ירושלים"
+  const baseName = zoneId.split(' - ')[0].trim();
+
   return alert.cities.some((city) => {
     const zone = findZoneByName(city);
-    if (!zone || !targetZone) {
-      return city.includes(zoneId) || zoneId.includes(city);
-    }
-    return zone.hebrewName === targetZone.hebrewName;
+    if (zone && targetZone && zone.hebrewName === targetZone.hebrewName) return true;
+
+    // Direct Hebrew string matching
+    if (city.includes(zoneId) || zoneId.includes(city)) return true;
+
+    // Base name matching: "ירושלים" matches "ירושלים - מרכז, רמות"
+    if (city.includes(baseName) || baseName.includes(city)) return true;
+
+    return false;
   });
 }
 
@@ -65,11 +74,24 @@ function computeRawFactors(input: RiskInput) {
       : Infinity;
 
   const sixHoursAgo = new Date(currentTime.getTime() - 6 * 60 * 60 * 1000);
-  const last6hAlerts = zoneAlerts.filter((a) => a.timestamp >= sixHoursAgo);
+  const twentyFourHoursAgo = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
+
+  // Expand window progressively: 6h → 24h → 72h → all data
+  let windowAlerts = zoneAlerts.filter((a) => a.timestamp >= sixHoursAgo);
+  if (windowAlerts.length < 2) {
+    windowAlerts = zoneAlerts.filter((a) => a.timestamp >= twentyFourHoursAgo);
+  }
+  if (windowAlerts.length < 2) {
+    const threeDaysAgo = new Date(currentTime.getTime() - 72 * 60 * 60 * 1000);
+    windowAlerts = zoneAlerts.filter((a) => a.timestamp >= threeDaysAgo);
+  }
+  if (windowAlerts.length < 2) {
+    windowAlerts = zoneAlerts;
+  }
 
   let avgIntervalMinutes: number;
-  if (last6hAlerts.length >= 2) {
-    const sorted = [...last6hAlerts].sort(
+  if (windowAlerts.length >= 2) {
+    const sorted = [...windowAlerts].sort(
       (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
     );
     let totalInterval = 0;
@@ -82,7 +104,6 @@ function computeRawFactors(input: RiskInput) {
     avgIntervalMinutes = 720;
   }
 
-  const twentyFourHoursAgo = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
   const volume24h = zoneAlerts.filter((a) => a.timestamp >= twentyFourHoursAgo).length;
 
   const threeHoursAgo = new Date(currentTime.getTime() - 3 * 60 * 60 * 1000);
@@ -219,6 +240,7 @@ export function findOptimalWindow(
 ): OptimalWindow {
   let bestRisk = Infinity;
   let bestStart = currentTime;
+  let bestOffset = 0;
 
   for (let offsetMinutes = 0; offsetMinutes < 24 * 60; offsetMinutes += 15) {
     const candidateStart = new Date(
@@ -238,6 +260,17 @@ export function findOptimalWindow(
     if (result.riskPercent < bestRisk) {
       bestRisk = result.riskPercent;
       bestStart = candidateStart;
+      bestOffset = offsetMinutes;
+    }
+    // Prefer sooner windows: if within 2h and nearly as good, take it
+    else if (
+      offsetMinutes <= 120 &&
+      result.riskPercent <= bestRisk + 5 &&
+      offsetMinutes < bestOffset
+    ) {
+      bestRisk = result.riskPercent;
+      bestStart = candidateStart;
+      bestOffset = offsetMinutes;
     }
   }
 

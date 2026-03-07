@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { Alert, RiskWeights } from '@/lib/types';
 import { calculateNapRiskWeighted, DEFAULT_WEIGHTS } from '@/lib/risk';
-import { formatTime } from '@/lib/utils';
+import { formatBestTime, formatGraphTimeLabel } from '@/lib/utils';
 
 interface SafeNapGraphProps {
   zoneId: string;
@@ -44,10 +44,11 @@ export default function SafeNapGraph({
   const { data, bestTimeLabel, nowIndex } = useMemo(() => {
     const points: TimelinePoint[] = [];
     let bestRisk = Infinity;
-    let bestLabel = '';
+    let bestTime: Date | null = null;
     let nIdx = 0;
 
     // -12h to +12h, every 60 min (25 points)
+    let prevTime: Date | null = null;
     for (let offset = -12 * 60; offset <= 12 * 60; offset += 60) {
       const time = new Date(currentTime.getTime() + offset * 60000);
       const risk = calculateNapRiskWeighted(
@@ -56,23 +57,28 @@ export default function SafeNapGraph({
       );
       const point: TimelinePoint = {
         time: time.getTime(),
-        timeLabel: formatTime(time),
+        timeLabel: formatGraphTimeLabel(time, prevTime),
         riskPercent: risk.riskPercent,
         isPast: time.getTime() < currentTime.getTime(),
       };
       points.push(point);
+      prevTime = time;
 
       if (offset === 0) nIdx = points.length - 1;
 
       // Best future time only
       if (offset >= 0 && risk.riskPercent < bestRisk) {
         bestRisk = risk.riskPercent;
-        bestLabel = formatTime(time);
+        bestTime = time;
       }
     }
 
-    return { data: points, bestTimeLabel: bestLabel, nowIndex: nIdx };
-  }, [zoneId, napDuration, alerts, currentTime, weights]);
+    const label = bestTime
+      ? formatBestTime(bestTime, currentTime, t.tomorrow)
+      : '';
+
+    return { data: points, bestTimeLabel: label, nowIndex: nIdx };
+  }, [zoneId, napDuration, alerts, currentTime, weights, t.tomorrow]);
 
   // Get alert timestamps for the past 12h for reference marks
   const alertTimes = useMemo(() => {

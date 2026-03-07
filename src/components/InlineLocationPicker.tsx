@@ -32,11 +32,11 @@ function getZoneName(zone: Zone, lang: Language): string {
   return zone.hebrewName;
 }
 
-const QUICK_CITIES = [
-  '\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1 - \u05DE\u05E8\u05DB\u05D6 \u05D4\u05E2\u05D9\u05E8',
-  '\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD - \u05DE\u05E8\u05DB\u05D6',
-  '\u05D7\u05D9\u05E4\u05D4 - \u05DB\u05E8\u05DE\u05DC, \u05D4\u05D3\u05E8 \u05D5\u05E2\u05D9\u05E8 \u05EA\u05D7\u05EA\u05D9\u05EA',
-  '\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2 - \u05D3\u05E8\u05D5\u05DD',
+const QUICK_CITIES: { hebrewName: string; shortEnglish: string }[] = [
+  { hebrewName: '\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1 - \u05DE\u05E8\u05DB\u05D6 \u05D4\u05E2\u05D9\u05E8', shortEnglish: 'Tel Aviv - Center' },
+  { hebrewName: '\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD - \u05DE\u05E8\u05DB\u05D6', shortEnglish: 'Jerusalem - Center' },
+  { hebrewName: '\u05D7\u05D9\u05E4\u05D4 - \u05DB\u05E8\u05DE\u05DC, \u05D4\u05D3\u05E8 \u05D5\u05E2\u05D9\u05E8 \u05EA\u05D7\u05EA\u05D9\u05EA', shortEnglish: 'Haifa - Carmel' },
+  { hebrewName: '\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2 - \u05D3\u05E8\u05D5\u05DD', shortEnglish: 'Beer Sheva - South' },
 ];
 
 interface InlineLocationPickerProps {
@@ -172,15 +172,15 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
         >
           {t.allOfIsrael}
         </button>
-        {QUICK_CITIES.map((cityName) => {
-          const zone = ZONES.find((z) => z.hebrewName === cityName);
+        {QUICK_CITIES.map((chip) => {
+          const zone = ZONES.find((z) => z.hebrewName === chip.hebrewName);
           if (!zone) return null;
-          const display = language === 'en' ? zone.englishName : zone.hebrewName.split(' - ')[0];
-          const isActive = currentZone === cityName;
+          const display = language === 'en' ? chip.shortEnglish : zone.hebrewName;
+          const isActive = currentZone === chip.hebrewName;
           return (
             <button
-              key={cityName}
-              onClick={() => selectZone(cityName)}
+              key={chip.hebrewName}
+              onClick={() => selectZone(chip.hebrewName)}
               className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
                 isActive
                   ? 'bg-indigo-500/20 border-indigo-400 text-indigo-300'

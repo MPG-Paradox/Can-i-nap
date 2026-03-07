@@ -10,10 +10,12 @@ interface StatsCardsProps {
 
 function formatTimeSince(totalSeconds: number, t: ReturnType<typeof useLanguage>['t']): string {
   if (totalSeconds < 0) return '\u2014';
-  const h = Math.floor(totalSeconds / 3600);
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.floor(totalSeconds % 60);
 
+  if (d > 0) return t.daysAgo.replace('{days}', String(d));
   if (h > 0) return `${h}${t.hours} ${m}${t.minutesShort}`;
   if (m > 0) return `${m}${t.minutesShort} ${s}${t.secondsShort}`;
   return `${s}${t.secondsShort}`;
@@ -63,7 +65,7 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
       <div className="bg-surface-card rounded-xl p-4">
         <p className="text-xs text-slate-400 uppercase tracking-wide">{t.timeSinceLast}</p>
         <p className={`text-2xl font-bold mt-1 tabular-nums ${getTimeSinceColor(baseSeconds / 60)}`}>
-          {baseSeconds < 0 ? t.noAlerts : formatTimeSince(baseSeconds, t)}
+          {baseSeconds < 0 ? t.noAlertsEver : formatTimeSince(baseSeconds, t)}
         </p>
       </div>
 

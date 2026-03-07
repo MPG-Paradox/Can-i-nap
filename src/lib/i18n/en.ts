@@ -84,4 +84,11 @@ export const en = {
   affectedAreas: 'Affected areas',
   refreshGraph: 'Refresh',
   limitedData: 'Limited data \u2014 results may be inaccurate',
+  tomorrow: 'Tomorrow',
+  today: 'Today',
+  dataStale: 'Data is {hours}h old',
+  runPollHint: 'Run poll to get live data',
+  daysAgo: '{days}d ago',
+  hoursAgo: '{hours}h ago',
+  noAlertsEver: 'No alerts recorded',
 };

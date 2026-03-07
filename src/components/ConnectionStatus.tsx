@@ -9,9 +9,10 @@ interface ConnectionStatusProps {
   status: Status;
   lastFetchTime?: Date | null;
   alertCount?: number;
+  newestAlertTime?: Date | null;
 }
 
-export default function ConnectionStatus({ status, lastFetchTime, alertCount }: ConnectionStatusProps) {
+export default function ConnectionStatus({ status, lastFetchTime, alertCount, newestAlertTime }: ConnectionStatusProps) {
   const { t } = useLanguage();
 
   const config: Record<Status, { color: string; text: string }> = {
@@ -21,6 +22,12 @@ export default function ConnectionStatus({ status, lastFetchTime, alertCount }: 
   };
 
   const { color, text } = config[status];
+
+  // Check data staleness
+  const dataAgeHours = newestAlertTime
+    ? (Date.now() - newestAlertTime.getTime()) / (60 * 60 * 1000)
+    : Infinity;
+  const isStale = dataAgeHours > 1 && dataAgeHours < Infinity;
 
   return (
     <div className="flex items-center gap-1.5 justify-center flex-wrap">
@@ -39,6 +46,11 @@ export default function ConnectionStatus({ status, lastFetchTime, alertCount }: 
       {alertCount !== undefined && alertCount > 0 && alertCount < 100 && (
         <span className="text-xs text-risk-yellow block w-full text-center mt-0.5">
           {t.limitedData}
+        </span>
+      )}
+      {isStale && (
+        <span className="text-xs text-risk-yellow block w-full text-center mt-0.5">
+          {t.dataStale.replace('{hours}', Math.round(dataAgeHours).toString())} {' \u00B7 '} {t.runPollHint}
         </span>
       )}
     </div>

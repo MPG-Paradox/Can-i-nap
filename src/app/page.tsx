@@ -78,7 +78,7 @@ function MainApp() {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const res = await fetch('/api/alerts?hours=24');
+      const res = await fetch('/api/alerts?hours=168');
       if (res.ok) {
         const data: StoredAlert[] = await res.json();
         const newJson = JSON.stringify(data);
@@ -158,8 +158,10 @@ function MainApp() {
       }
     }
 
+    const baseName = zoneName.split(' - ')[0].trim();
     const matches = alertCities.some(city =>
-      city.includes(zoneName) || zoneName.includes(city)
+      city.includes(zoneName) || zoneName.includes(city) ||
+      city.includes(baseName) || baseName.includes(city)
     );
     if (matches) {
       setActiveOverlay({ type: 'active-alert', alert, triggeredAt: new Date() });
@@ -201,6 +203,14 @@ function MainApp() {
     );
   }, [zone, napDuration, alerts, calcTime, weights]);
 
+  const newestAlertTime = useMemo(() => {
+    if (alerts.length === 0) return null;
+    return alerts.reduce((latest, a) =>
+      a.timestamp.getTime() > latest.getTime() ? a.timestamp : latest,
+      alerts[0].timestamp
+    );
+  }, [alerts]);
+
   const displayName = zone
     ? language === 'en' ? zone.englishName : zone.hebrewName
     : '';
@@ -239,6 +249,7 @@ function MainApp() {
             status={connectionStatus}
             lastFetchTime={lastFetchTime}
             alertCount={alerts.length}
+            newestAlertTime={newestAlertTime}
           />
         </div>
 
