@@ -36,6 +36,11 @@ export default function ConnectionStatus({ status, lastFetchTime, alertCount }: 
           {' \u00B7 '}{alertCount} {t.alertsLoaded}
         </span>
       )}
+      {alertCount !== undefined && alertCount > 0 && alertCount < 100 && (
+        <span className="text-xs text-risk-yellow block w-full text-center mt-0.5">
+          {t.limitedData}
+        </span>
+      )}
     </div>
   );
 }

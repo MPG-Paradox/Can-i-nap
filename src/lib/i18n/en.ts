@@ -83,4 +83,5 @@ export const en = {
   preAlertBanner: 'Pre-alert detected \u2014 missile alert may follow in ~2 minutes',
   affectedAreas: 'Affected areas',
   refreshGraph: 'Refresh',
+  limitedData: 'Limited data \u2014 results may be inaccurate',
 };

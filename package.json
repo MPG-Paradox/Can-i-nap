@@ -8,7 +8,12 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "npx tsx scripts/seed.ts",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "fetch-history": "npx tsx scripts/fetch-oref-history.ts",
+    "fetch-tzofar": "npx tsx scripts/fetch-tzofar-history.ts",
+    "load-data": "npx tsx scripts/load-all-data.ts",
+    "validate-data": "npx tsx scripts/validate-data.ts",
+    "poll": "npx tsx scripts/poll-live.ts"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
