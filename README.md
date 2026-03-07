@@ -1,4 +1,4 @@
-# Can I Nap? | אפשר לישון? | هل يمكنني أن أنام؟ 😴
+# Can I Nap? 
 
 **Calculate the probability your nap will be interrupted by a rocket alert.**
 
