@@ -2,6 +2,7 @@
 import { Zone } from './types';
 
 export const ZONES: Zone[] = [
+  { hebrewName: "\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC", englishName: "All of Israel", district: "center", lat: 31.5, lng: 34.75, timeToShelterSeconds: 90, threatSource: "both", isRegion: true, isNational: true, regionCities: [] },
   { hebrewName: "גוש דן", englishName: "Gush Dan", district: "tel_aviv", lat: 32.07, lng: 34.79, timeToShelterSeconds: 90, threatSource: "iran", isRegion: true, regionCities: ["תל אביב","רמת גן","גבעתיים","בני ברק","חולון","בת ים","פתח תקווה","ראשון לציון","הרצליה","רמת השרון"] },
   { hebrewName: "עוטף עזה", englishName: "Gaza Envelope", district: "south", lat: 31.37, lng: 34.4, timeToShelterSeconds: 15, threatSource: "iran", isRegion: true, regionCities: ["שדרות","נתיבות","אופקים","יבול","כיסופים","ניר עוז","בארי","רעים","נחל עוז"] },
   { hebrewName: "השפלה", englishName: "Shfela", district: "center", lat: 31.88, lng: 34.87, timeToShelterSeconds: 90, threatSource: "iran", isRegion: true, regionCities: ["רמלה","לוד","מודיעין","בית שמש","גדרה","קרית גת"] },

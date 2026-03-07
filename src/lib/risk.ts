@@ -1,19 +1,35 @@
-import { RiskInput, RiskResult, TrendDirection, OptimalWindow, Alert } from './types';
+import { RiskInput, RiskResult, RiskWeights, TrendDirection, OptimalWindow, Alert } from './types';
 import { findZoneByName, getZonesForRegion } from './zones';
 import { isDualFrontActive } from './dual-front';
 
-function matchesZone(alert: Alert, zoneId: string): boolean {
-  // Check if the zoneId is a region
+export const DEFAULT_WEIGHTS: RiskWeights = {
+  core: 40,
+  trend: 15,
+  recency: 20,
+  dualFront: 15,
+  timeOfDay: 10,
+};
+
+export function getTimeOfDayMultiplier(hour: number): number {
+  if (hour >= 1 && hour <= 5) return 1.3;
+  if (hour >= 6 && hour <= 8) return 1.1;
+  if (hour >= 9 && hour <= 15) return 0.8;
+  if (hour >= 16 && hour <= 19) return 1.0;
+  if (hour >= 20) return 1.2;
+  return 1.0; // hour 0 (midnight)
+}
+
+function matchesZone(alert: Alert, zoneId: string, isNational: boolean): boolean {
+  if (isNational) return true;
+
   const targetZone = findZoneByName(zoneId);
   if (targetZone && targetZone.isRegion) {
     const regionZones = getZonesForRegion(zoneId);
     const regionNames = new Set(regionZones.map((z) => z.hebrewName));
     return alert.cities.some((city) => {
-      // Check if city is in the region or matches a region city prefix
       if (regionNames.has(city)) return true;
       const zone = findZoneByName(city);
       if (zone && regionNames.has(zone.hebrewName)) return true;
-      // Also check prefix matching for region cities
       return targetZone.regionCities!.some(
         (prefix) => city.includes(prefix) || prefix.includes(city)
       );
@@ -29,21 +45,21 @@ function matchesZone(alert: Alert, zoneId: string): boolean {
   });
 }
 
-export function calculateNapRisk(input: RiskInput): RiskResult {
+function computeRawFactors(input: RiskInput) {
   const { zoneId, napDurationMinutes, alerts, currentTime } = input;
 
-  // 1. Filter alerts to user's zone
+  const targetZone = findZoneByName(zoneId);
+  const isNational = !!(targetZone && targetZone.isNational);
+
   const zoneAlerts = alerts
-    .filter((a) => matchesZone(a, zoneId))
+    .filter((a) => matchesZone(a, zoneId, isNational))
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-  // 2. Time since last alert
   const timeSinceLastMinutes =
     zoneAlerts.length > 0
       ? (currentTime.getTime() - zoneAlerts[0].timestamp.getTime()) / (60 * 1000)
       : Infinity;
 
-  // 3. Average interval
   const sixHoursAgo = new Date(currentTime.getTime() - 6 * 60 * 60 * 1000);
   const last6hAlerts = zoneAlerts.filter((a) => a.timestamp >= sixHoursAgo);
 
@@ -59,18 +75,12 @@ export function calculateNapRisk(input: RiskInput): RiskResult {
     }
     avgIntervalMinutes = totalInterval / ((sorted.length - 1) * 60 * 1000);
   } else {
-    avgIntervalMinutes = 720; // 12 hours default
+    avgIntervalMinutes = 720;
   }
 
-  // 4. Volume 24h
-  const twentyFourHoursAgo = new Date(
-    currentTime.getTime() - 24 * 60 * 60 * 1000
-  );
-  const volume24h = zoneAlerts.filter(
-    (a) => a.timestamp >= twentyFourHoursAgo
-  ).length;
+  const twentyFourHoursAgo = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
+  const volume24h = zoneAlerts.filter((a) => a.timestamp >= twentyFourHoursAgo).length;
 
-  // 5. Trend
   const threeHoursAgo = new Date(currentTime.getTime() - 3 * 60 * 60 * 1000);
   const last3h = zoneAlerts.filter((a) => a.timestamp >= threeHoursAgo).length;
   const prior3h = zoneAlerts.filter(
@@ -86,72 +96,140 @@ export function calculateNapRisk(input: RiskInput): RiskResult {
     trend = 'stable';
   }
 
-  // 6. Base risk (Poisson/exponential CDF)
   const baseRisk = 1 - Math.exp(-napDurationMinutes / avgIntervalMinutes);
 
-  // 7. Trend multiplier
   const trendMultiplier =
     trend === 'increasing' ? 1.4 : trend === 'decreasing' ? 0.6 : 1.0;
 
-  // 8. Recency multiplier
   const timeSinceLastSeconds =
-    timeSinceLastMinutes === Infinity
-      ? Infinity
-      : timeSinceLastMinutes * 60;
+    timeSinceLastMinutes === Infinity ? Infinity : timeSinceLastMinutes * 60;
   const recencyMultiplier =
     timeSinceLastMinutes === Infinity
       ? 0.5
       : 0.5 + 1.5 * Math.exp(-timeSinceLastSeconds / (60 * 60));
 
-  // 9. Dual front
   const dualFrontStatus = isDualFrontActive(alerts, currentTime);
   const dualFrontMultiplier = dualFrontStatus.riskMultiplier;
 
-  // 10. Raw risk
-  const rawRisk =
-    baseRisk * trendMultiplier * recencyMultiplier * dualFrontMultiplier;
+  const timeOfDayMultiplier = getTimeOfDayMultiplier(currentTime.getHours());
 
-  // 11. Clamp
-  const riskPercent = Math.min(99, Math.max(0, Math.round(rawRisk * 100)));
+  return {
+    timeSinceLastMinutes,
+    avgIntervalMinutes,
+    volume24h,
+    trend,
+    baseRisk,
+    trendMultiplier,
+    recencyMultiplier,
+    dualFrontStatus,
+    dualFrontMultiplier,
+    timeOfDayMultiplier,
+  };
+}
+
+export function calculateNapRiskWeighted(
+  input: RiskInput,
+  weights: RiskWeights = DEFAULT_WEIGHTS
+): RiskResult {
+  const raw = computeRawFactors(input);
+
+  const totalWeight = weights.core + weights.trend + weights.recency + weights.dualFront + weights.timeOfDay;
+  const w = {
+    core: weights.core / totalWeight,
+    trend: weights.trend / totalWeight,
+    recency: weights.recency / totalWeight,
+    dualFront: weights.dualFront / totalWeight,
+    timeOfDay: weights.timeOfDay / totalWeight,
+  };
+
+  const coreModuleRisk = raw.baseRisk;
+  const trendModuleRisk = Math.max(0, Math.min(1, (raw.trendMultiplier - 0.6) / (1.4 - 0.6)));
+  const recencyModuleRisk = Math.max(0, Math.min(1, (raw.recencyMultiplier - 0.5) / (2.0 - 0.5)));
+  const dualFrontModuleRisk = Math.max(0, Math.min(1, (raw.dualFrontMultiplier - 1.0) / (2.5 - 1.0)));
+  const timeOfDayModuleRisk = Math.max(0, Math.min(1, (raw.timeOfDayMultiplier - 0.8) / (1.3 - 0.8)));
+
+  const weightedRisk =
+    coreModuleRisk * w.core +
+    trendModuleRisk * w.trend +
+    recencyModuleRisk * w.recency +
+    dualFrontModuleRisk * w.dualFront +
+    timeOfDayModuleRisk * w.timeOfDay;
+
+  const riskPercent = Math.min(99, Math.max(0, Math.round(weightedRisk * 100)));
 
   return {
     riskPercent,
     timeSinceLastMinutes:
-      timeSinceLastMinutes === Infinity ? -1 : Math.round(timeSinceLastMinutes),
-    avgIntervalMinutes: Math.round(avgIntervalMinutes),
-    volume24h,
-    trend,
-    dualFrontStatus,
-    baseRisk,
+      raw.timeSinceLastMinutes === Infinity ? -1 : Math.round(raw.timeSinceLastMinutes),
+    avgIntervalMinutes: Math.round(raw.avgIntervalMinutes),
+    volume24h: raw.volume24h,
+    trend: raw.trend,
+    dualFrontStatus: raw.dualFrontStatus,
+    baseRisk: raw.baseRisk,
     multipliers: {
-      trendMultiplier,
-      recencyMultiplier,
-      dualFrontMultiplier,
+      trendMultiplier: raw.trendMultiplier,
+      recencyMultiplier: raw.recencyMultiplier,
+      dualFrontMultiplier: raw.dualFrontMultiplier,
+      timeOfDayMultiplier: raw.timeOfDayMultiplier,
+    },
+    factors: {
+      core: {
+        weight: weights.core,
+        moduleRisk: Math.round(coreModuleRisk * 100),
+        contribution: Math.round(coreModuleRisk * w.core * 100),
+      },
+      trend: {
+        weight: weights.trend,
+        moduleRisk: Math.round(trendModuleRisk * 100),
+        contribution: Math.round(trendModuleRisk * w.trend * 100),
+      },
+      recency: {
+        weight: weights.recency,
+        moduleRisk: Math.round(recencyModuleRisk * 100),
+        contribution: Math.round(recencyModuleRisk * w.recency * 100),
+      },
+      dualFront: {
+        weight: weights.dualFront,
+        moduleRisk: Math.round(dualFrontModuleRisk * 100),
+        contribution: Math.round(dualFrontModuleRisk * w.dualFront * 100),
+      },
+      timeOfDay: {
+        weight: weights.timeOfDay,
+        moduleRisk: Math.round(timeOfDayModuleRisk * 100),
+        contribution: Math.round(timeOfDayModuleRisk * w.timeOfDay * 100),
+      },
     },
   };
+}
+
+export function calculateNapRisk(input: RiskInput): RiskResult {
+  return calculateNapRiskWeighted(input, DEFAULT_WEIGHTS);
 }
 
 export function findOptimalWindow(
   zoneId: string,
   durationMinutes: number,
   alerts: Alert[],
-  currentTime: Date
+  currentTime: Date,
+  weights: RiskWeights = DEFAULT_WEIGHTS
 ): OptimalWindow {
   let bestRisk = Infinity;
   let bestStart = currentTime;
 
-  // Scan next 24 hours in 15-minute increments
   for (let offsetMinutes = 0; offsetMinutes < 24 * 60; offsetMinutes += 15) {
     const candidateStart = new Date(
       currentTime.getTime() + offsetMinutes * 60 * 1000
     );
 
-    const result = calculateNapRisk({
-      zoneId,
-      napDurationMinutes: durationMinutes,
-      alerts,
-      currentTime: candidateStart,
-    });
+    const result = calculateNapRiskWeighted(
+      {
+        zoneId,
+        napDurationMinutes: durationMinutes,
+        alerts,
+        currentTime: candidateStart,
+      },
+      weights
+    );
 
     if (result.riskPercent < bestRisk) {
       bestRisk = result.riskPercent;

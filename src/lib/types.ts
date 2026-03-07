@@ -14,6 +14,7 @@ export interface Zone {
   timeToShelterSeconds: number;
   threatSource: ThreatSource;
   isRegion?: boolean;
+  isNational?: boolean;
   regionCities?: string[];
 }
 
@@ -50,11 +51,25 @@ export interface OrefHistoryItem {
   category: number;
 }
 
+export interface RiskWeights {
+  core: number;
+  trend: number;
+  recency: number;
+  dualFront: number;
+  timeOfDay: number;
+}
+
 export interface RiskInput {
   zoneId: string;
   napDurationMinutes: number;
   alerts: Alert[];
   currentTime: Date;
+}
+
+export interface RiskFactor {
+  weight: number;
+  moduleRisk: number;
+  contribution: number;
 }
 
 export interface RiskResult {
@@ -69,6 +84,14 @@ export interface RiskResult {
     trendMultiplier: number;
     recencyMultiplier: number;
     dualFrontMultiplier: number;
+    timeOfDayMultiplier: number;
+  };
+  factors: {
+    core: RiskFactor;
+    trend: RiskFactor;
+    recency: RiskFactor;
+    dualFront: RiskFactor;
+    timeOfDay: RiskFactor;
   };
 }
 

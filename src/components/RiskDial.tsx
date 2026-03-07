@@ -5,8 +5,6 @@ import { useLanguage } from '@/lib/i18n/context';
 
 interface RiskDialProps {
   riskPercent: number;
-  zoneName: string;
-  napDuration: number;
 }
 
 function getRiskColor(risk: number): string {
@@ -16,13 +14,12 @@ function getRiskColor(risk: number): string {
   return '#dc2626';
 }
 
-export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDialProps) {
+export default function RiskDial({ riskPercent }: RiskDialProps) {
   const { t } = useLanguage();
   const [displayValue, setDisplayValue] = useState(0);
   const prevValueRef = useRef(0);
   const animFrameRef = useRef<number>(0);
 
-  // Animate the number
   useEffect(() => {
     const from = prevValueRef.current;
     const to = riskPercent;
@@ -32,7 +29,7 @@ export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDia
     function tick(now: number) {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       const current = Math.round(from + (to - from) * eased);
       setDisplayValue(current);
 
@@ -53,10 +50,6 @@ export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDia
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (riskPercent / 100) * circumference;
 
-  const subtitle = t.forNap
-    .replace('{duration}', String(napDuration))
-    .replace('{zone}', zoneName);
-
   return (
     <div className="flex flex-col items-center">
       <div className="relative w-[240px] h-[240px] sm:w-[280px] sm:h-[280px]">
@@ -65,7 +58,6 @@ export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDia
           viewBox="0 0 224 224"
           style={{ filter: `drop-shadow(0 0 12px ${color}40)` }}
         >
-          {/* Background ring */}
           <circle
             cx="112"
             cy="112"
@@ -74,7 +66,6 @@ export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDia
             stroke="rgb(51 65 85 / 0.3)"
             strokeWidth={stroke}
           />
-          {/* Progress ring */}
           <circle
             cx="112"
             cy="112"
@@ -88,7 +79,6 @@ export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDia
             style={{ transition: 'stroke-dashoffset 500ms ease-out, stroke 300ms ease' }}
           />
         </svg>
-        {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className="text-5xl font-bold tabular-nums"
@@ -99,7 +89,6 @@ export default function RiskDial({ riskPercent, zoneName, napDuration }: RiskDia
           <span className="text-sm text-slate-400 mt-1">{t.riskLabel}</span>
         </div>
       </div>
-      <p className="mt-3 text-base text-slate-300 text-center max-w-xs">{subtitle}</p>
     </div>
   );
 }
