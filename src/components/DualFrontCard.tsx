@@ -51,7 +51,7 @@ export default function DualFrontCard({ status }: DualFrontCardProps) {
       {/* Iran front */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-sm text-slate-300">{'\uD83C\uDDEE\uD83C\uDDF7'} {t.iranFront}</span>
+          <span className="text-sm text-slate-300">{t.iranFront}</span>
           <span className="text-xs text-slate-400">{status.iranFront.alertsLast6h} {t.alertsLast6h}</span>
         </div>
         <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
@@ -65,7 +65,7 @@ export default function DualFrontCard({ status }: DualFrontCardProps) {
       {/* Hezbollah front */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-sm text-slate-300">{'\uD83C\uDDF1\uD83C\uDDE7'} {t.hezbollahFront}</span>
+          <span className="text-sm text-slate-300">{t.hezbollahFront}</span>
           <span className="text-xs text-slate-400">{status.hezbollahFront.alertsLast6h} {t.alertsLast6h}</span>
         </div>
         <div className="h-2 rounded-full bg-slate-700 overflow-hidden">

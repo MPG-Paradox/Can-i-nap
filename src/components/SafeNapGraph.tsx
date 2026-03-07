@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { Alert, RiskWeights } from '@/lib/types';
 import { calculateNapRiskWeighted, DEFAULT_WEIGHTS } from '@/lib/risk';
+import { formatTime } from '@/lib/utils';
 
 interface SafeNapGraphProps {
   zoneId: string;
@@ -28,10 +29,6 @@ interface TimelinePoint {
   timeLabel: string;
   riskPercent: number;
   isPast: boolean;
-}
-
-function formatTimeLabel(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 export default function SafeNapGraph({
@@ -50,8 +47,8 @@ export default function SafeNapGraph({
     let bestLabel = '';
     let nIdx = 0;
 
-    // -12h to +12h, every 30 min (49 points — fast enough)
-    for (let offset = -12 * 60; offset <= 12 * 60; offset += 30) {
+    // -12h to +12h, every 60 min (25 points)
+    for (let offset = -12 * 60; offset <= 12 * 60; offset += 60) {
       const time = new Date(currentTime.getTime() + offset * 60000);
       const risk = calculateNapRiskWeighted(
         { zoneId, napDurationMinutes: napDuration, alerts, currentTime: time },
@@ -59,7 +56,7 @@ export default function SafeNapGraph({
       );
       const point: TimelinePoint = {
         time: time.getTime(),
-        timeLabel: formatTimeLabel(time),
+        timeLabel: formatTime(time),
         riskPercent: risk.riskPercent,
         isPast: time.getTime() < currentTime.getTime(),
       };
@@ -70,7 +67,7 @@ export default function SafeNapGraph({
       // Best future time only
       if (offset >= 0 && risk.riskPercent < bestRisk) {
         bestRisk = risk.riskPercent;
-        bestLabel = formatTimeLabel(time);
+        bestLabel = formatTime(time);
       }
     }
 
@@ -125,7 +122,7 @@ export default function SafeNapGraph({
               tick={{ fill: '#64748b', fontSize: 11 }}
               tickLine={false}
               axisLine={{ stroke: '#334155' }}
-              interval={3}
+              interval={2}
             />
             <YAxis
               domain={[0, 100]}

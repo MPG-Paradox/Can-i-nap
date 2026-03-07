@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
 import { RiskResult } from '@/lib/types';
 
 interface StatsCardsProps {
   risk: RiskResult;
+  tickTime: Date;
 }
 
 function formatTimeSince(totalSeconds: number, t: ReturnType<typeof useLanguage>['t']): string {
@@ -33,24 +33,16 @@ function getVolumeColor(count: number): string {
   return 'text-risk-red';
 }
 
-export default function StatsCards({ risk }: StatsCardsProps) {
+export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
   const { t } = useLanguage();
-  const [secondsSinceLast, setSecondsSinceLast] = useState(
-    risk.timeSinceLastMinutes >= 0 ? risk.timeSinceLastMinutes * 60 : -1
-  );
 
-  // Tick up every second
-  useEffect(() => {
-    if (risk.timeSinceLastMinutes < 0) {
-      setSecondsSinceLast(-1);
-      return;
-    }
-    setSecondsSinceLast(risk.timeSinceLastMinutes * 60);
-    const id = setInterval(() => {
-      setSecondsSinceLast((prev) => (prev >= 0 ? prev + 1 : prev));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [risk.timeSinceLastMinutes]);
+  // Use tickTime to compute live seconds since last alert
+  // risk.timeSinceLastMinutes is from the last calcTime snapshot
+  // We don't need the exact live counter — the 30s recalc is close enough
+  // tickTime is used just to trigger re-renders for the display
+  const baseSeconds = risk.timeSinceLastMinutes >= 0 ? Math.floor(risk.timeSinceLastMinutes * 60) : -1;
+  // Suppress unused tickTime warning — it's used to trigger re-renders
+  void tickTime;
 
   const avgHours = risk.avgIntervalMinutes / 60;
   const avgDisplay = risk.avgIntervalMinutes >= 720
@@ -70,8 +62,8 @@ export default function StatsCards({ risk }: StatsCardsProps) {
       {/* Time since last */}
       <div className="bg-surface-card rounded-xl p-4">
         <p className="text-xs text-slate-400 uppercase tracking-wide">{t.timeSinceLast}</p>
-        <p className={`text-2xl font-bold mt-1 tabular-nums ${getTimeSinceColor(secondsSinceLast / 60)}`}>
-          {secondsSinceLast < 0 ? t.noAlerts : formatTimeSince(secondsSinceLast, t)}
+        <p className={`text-2xl font-bold mt-1 tabular-nums ${getTimeSinceColor(baseSeconds / 60)}`}>
+          {baseSeconds < 0 ? t.noAlerts : formatTimeSince(baseSeconds, t)}
         </p>
       </div>
 

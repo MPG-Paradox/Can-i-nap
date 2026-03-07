@@ -2,10 +2,12 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useLanguage } from '@/lib/i18n/context';
 import { findZoneByName } from '@/lib/zones';
 import { calculateNapRiskWeighted, DEFAULT_WEIGHTS } from '@/lib/risk';
 import { Alert, StoredAlert, RiskWeights } from '@/lib/types';
+import { useSSE } from '@/lib/use-sse';
 import LanguageToggle from '@/components/LanguageToggle';
 import RiskDial from '@/components/RiskDial';
 import RiskMessage from '@/components/RiskMessage';
@@ -14,8 +16,17 @@ import DurationButtons from '@/components/DurationButtons';
 import InlineLocationPicker from '@/components/InlineLocationPicker';
 import StatsCards from '@/components/StatsCards';
 import DualFrontCard from '@/components/DualFrontCard';
-import SafeNapGraph from '@/components/SafeNapGraph';
-import CalculationPanel from '@/components/CalculationPanel';
+import ActiveThreatOverlay from '@/components/ActiveThreatOverlay';
+
+const SafeNapGraph = dynamic(() => import('@/components/SafeNapGraph'), {
+  loading: () => <div className="h-[300px] bg-surface-card rounded-2xl animate-pulse" />,
+  ssr: false,
+});
+
+const CalculationPanel = dynamic(() => import('@/components/CalculationPanel'), {
+  loading: () => <div className="h-[200px] bg-surface-card rounded-2xl animate-pulse" />,
+  ssr: false,
+});
 
 function toAlert(stored: StoredAlert): Alert {
   return { ...stored, timestamp: new Date(stored.timestamp) };
@@ -39,8 +50,20 @@ function MainApp() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'offline'>('connected');
   const [loading, setLoading] = useState(true);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+
+  // Two separate timers for performance
+  const [tickTime, setTickTime] = useState(new Date());
+  const [calcTime, setCalcTime] = useState(new Date());
   const lastFetchRef = useRef(Date.now());
+  const prevAlertsRef = useRef('');
+
+  // Active threat overlay state
+  const [activeOverlay, setActiveOverlay] = useState<{
+    type: 'active-alert' | 'pre-alert';
+    alert?: StoredAlert;
+    triggeredAt: Date;
+  } | null>(null);
 
   const handleZoneChange = useCallback(
     (hebrewName: string) => {
@@ -58,8 +81,13 @@ function MainApp() {
       const res = await fetch('/api/alerts?hours=24');
       if (res.ok) {
         const data: StoredAlert[] = await res.json();
-        setAlerts(data.map(toAlert));
+        const newJson = JSON.stringify(data);
+        if (newJson !== prevAlertsRef.current) {
+          prevAlertsRef.current = newJson;
+          setAlerts(data.map(toAlert));
+        }
         setConnectionStatus('connected');
+        setLastFetchTime(new Date());
         lastFetchRef.current = Date.now();
       } else {
         setConnectionStatus('reconnecting');
@@ -71,22 +99,95 @@ function MainApp() {
     }
   }, []);
 
+  // Fetch alerts every 30s
   useEffect(() => {
     fetchAlerts();
     const id = setInterval(fetchAlerts, 30000);
     return () => clearInterval(id);
   }, [fetchAlerts]);
 
+  // Tick timer (1s) for StatsCards counter + staleness detection
+  // Calc timer (30s) for expensive risk/graph recalculations
   useEffect(() => {
-    const id = setInterval(() => {
-      setCurrentTime(new Date());
+    const tickId = setInterval(() => {
+      setTickTime(new Date());
       if (Date.now() - lastFetchRef.current > 60000) {
         setConnectionStatus((prev) => (prev === 'connected' ? 'reconnecting' : prev));
       }
     }, 1000);
-    return () => clearInterval(id);
+    const calcId = setInterval(() => setCalcTime(new Date()), 30000);
+    return () => {
+      clearInterval(tickId);
+      clearInterval(calcId);
+    };
   }, []);
 
+  // Trigger the poller every 5 seconds
+  useEffect(() => {
+    const pollId = setInterval(async () => {
+      try { await fetch('/api/poll'); } catch { /* silently fail */ }
+    }, 5000);
+    return () => clearInterval(pollId);
+  }, []);
+
+  // SSE: handle new alerts in real-time
+  const checkAlertForOverlay = useCallback((alert: StoredAlert) => {
+    const category = alert.category;
+    if (category === 14) {
+      setActiveOverlay({ type: 'pre-alert', alert, triggeredAt: new Date() });
+      return;
+    }
+    if (category !== 1 && category !== 2) return;
+
+    const currentZone = findZoneByName(zoneName);
+    if (!currentZone) return;
+
+    if (currentZone.isNational) {
+      setActiveOverlay({ type: 'active-alert', alert, triggeredAt: new Date() });
+      return;
+    }
+
+    const alertCities = alert.cities;
+    if (currentZone.isRegion && currentZone.regionCities) {
+      const matches = alertCities.some(city =>
+        currentZone.regionCities!.some(rc => city.includes(rc) || rc.includes(city))
+      );
+      if (matches) {
+        setActiveOverlay({ type: 'active-alert', alert, triggeredAt: new Date() });
+        return;
+      }
+    }
+
+    const matches = alertCities.some(city =>
+      city.includes(zoneName) || zoneName.includes(city)
+    );
+    if (matches) {
+      setActiveOverlay({ type: 'active-alert', alert, triggeredAt: new Date() });
+    }
+  }, [zoneName]);
+
+  const handleNewAlert = useCallback((alert: StoredAlert) => {
+    const parsed = toAlert(alert);
+    setAlerts(prev => {
+      const exists = prev.some(a => a.id === alert.id);
+      if (exists) return prev;
+      return [parsed, ...prev].slice(0, 500);
+    });
+    setCalcTime(new Date());
+    checkAlertForOverlay(alert);
+  }, [checkAlertForOverlay]);
+
+  useSSE(handleNewAlert);
+
+  // Auto-dismiss overlay
+  useEffect(() => {
+    if (!activeOverlay) return;
+    const timeout = activeOverlay.type === 'pre-alert' ? 3 * 60 * 1000 : 5 * 60 * 1000;
+    const timer = setTimeout(() => setActiveOverlay(null), timeout);
+    return () => clearTimeout(timer);
+  }, [activeOverlay]);
+
+  // Risk calculation uses calcTime (30s), not tickTime (1s)
   const risk = useMemo(() => {
     if (!zone) return null;
     return calculateNapRiskWeighted(
@@ -94,11 +195,11 @@ function MainApp() {
         zoneId: zone.hebrewName,
         napDurationMinutes: napDuration,
         alerts,
-        currentTime,
+        currentTime: calcTime,
       },
       weights
     );
-  }, [zone, napDuration, alerts, currentTime, weights]);
+  }, [zone, napDuration, alerts, calcTime, weights]);
 
   const displayName = zone
     ? language === 'en' ? zone.englishName : zone.hebrewName
@@ -114,6 +215,15 @@ function MainApp() {
     <>
       <LanguageToggle />
 
+      {activeOverlay && (
+        <ActiveThreatOverlay
+          type={activeOverlay.type}
+          alert={activeOverlay.alert}
+          timeToShelterSeconds={zone?.timeToShelterSeconds ?? 90}
+          onDismiss={() => setActiveOverlay(null)}
+        />
+      )}
+
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-3xl" />
       </div>
@@ -125,7 +235,11 @@ function MainApp() {
         </h1>
         <p className="mt-2 text-sm text-slate-400 text-center">{t.realTimeAssessment}</p>
         <div className="mt-1">
-          <ConnectionStatus status={connectionStatus} />
+          <ConnectionStatus
+            status={connectionStatus}
+            lastFetchTime={lastFetchTime}
+            alertCount={alerts.length}
+          />
         </div>
 
         {loading ? (
@@ -163,7 +277,7 @@ function MainApp() {
             </div>
 
             <div className="w-full mt-6">
-              <StatsCards risk={risk} />
+              <StatsCards risk={risk} tickTime={tickTime} />
             </div>
 
             <div className="w-full mt-6">
@@ -175,7 +289,7 @@ function MainApp() {
                 zoneId={zone!.hebrewName}
                 napDuration={napDuration}
                 alerts={alerts}
-                currentTime={currentTime}
+                currentTime={calcTime}
                 weights={weights}
                 onRefresh={fetchAlerts}
               />

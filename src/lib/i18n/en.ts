@@ -74,4 +74,13 @@ export const en = {
   factorRecency: 'Recency factor',
   factorDualFront: 'Dual-front escalation',
   factorTimeOfDay: 'Time-of-day bias',
+  lastUpdate: 'Last update',
+  alertsLoaded: 'alerts loaded',
+  seekShelter: 'SEEK SHELTER',
+  stayInShelter: 'STAY IN SHELTER',
+  alertActiveTitle: 'ALERT ACTIVE',
+  dismiss: 'Dismiss',
+  preAlertBanner: 'Pre-alert detected \u2014 missile alert may follow in ~2 minutes',
+  affectedAreas: 'Affected areas',
+  refreshGraph: 'Refresh',
 };

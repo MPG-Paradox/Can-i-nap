@@ -170,7 +170,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
               : 'border-slate-600 text-slate-300 hover:border-indigo-400'
           }`}
         >
-          {'\uD83C\uDDEE\uD83C\uDDF1'} {t.allOfIsrael}
+          {t.allOfIsrael}
         </button>
         {QUICK_CITIES.map((cityName) => {
           const zone = ZONES.find((z) => z.hebrewName === cityName);

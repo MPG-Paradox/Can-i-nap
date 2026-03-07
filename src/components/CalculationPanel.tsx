@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useLanguage } from '@/lib/i18n/context';
 import { RiskResult, RiskWeights, Language } from '@/lib/types';
 
@@ -66,8 +66,21 @@ export default function CalculationPanel({ risk, weights, onWeightsChange }: Cal
     timeOfDay: t.factorTimeOfDay,
   };
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestWeightsRef = useRef(weights);
+  latestWeightsRef.current = weights;
+
+  const debouncedOnChange = useCallback((newWeights: RiskWeights) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => onWeightsChange(newWeights), 150);
+  }, [onWeightsChange]);
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
   const handleWeightChange = (key: FactorKey, value: number) => {
-    onWeightsChange({ ...weights, [key]: value });
+    debouncedOnChange({ ...latestWeightsRef.current, [key]: value });
   };
 
   const toggleAll = () => {
