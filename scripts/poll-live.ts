@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { StoredAlert, AlertSource, OrefHistoryItem } from '../src/lib/types';
+import { StoredAlert, OrefHistoryItem } from '../src/lib/types';
+import { classifyAlertSource } from '../src/lib/zones';
 
 const STORE_PATH = path.join(__dirname, '..', 'data', 'alerts.json');
 
@@ -10,39 +11,6 @@ const OREF_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 };
-
-const NORTH_KEYWORDS = [
-  'קריית שמונה', 'נהריה', 'צפת', 'עכו', 'כרמיאל', 'טבריה', 'מעלות',
-  'שלומי', 'מטולה', 'חצור הגלילית', 'ראש פינה', 'יסוד המעלה', 'קצרין',
-  'גליל', 'גולן', 'מרום הגליל', 'עמק הירדן',
-];
-const HAIFA_KEYWORDS = ['חיפה', 'קריות', 'נשר', 'טירת כרמל', 'עתלית'];
-
-function classifySource(cities: string[], category: number): AlertSource {
-  if (category === 14) return 'iran';
-
-  let hasNorth = false;
-  let hasCentralSouth = false;
-
-  for (const city of cities) {
-    const isNorth = NORTH_KEYWORDS.some((k) => city.includes(k));
-    const isHaifa = HAIFA_KEYWORDS.some((k) => city.includes(k));
-
-    if (isHaifa) {
-      hasNorth = true;
-      hasCentralSouth = true;
-    } else if (isNorth) {
-      hasNorth = true;
-    } else {
-      hasCentralSouth = true;
-    }
-  }
-
-  if (hasNorth && hasCentralSouth) return 'dual';
-  if (hasNorth) return 'hezbollah';
-  if (hasCentralSouth) return 'iran';
-  return 'unknown';
-}
 
 function readAlerts(): StoredAlert[] {
   try {
@@ -94,21 +62,22 @@ async function pollRealTime() {
 
     const text = await response.text();
 
-    // Empty response = no active alert
     if (!text || text.trim() === '' || text.trim() === '[]') {
       return;
     }
 
     const data = JSON.parse(text);
 
-    // Skip if same alert we already processed
     if (data.id === lastAlertId) return;
     lastAlertId = data.id;
 
-    // Process and store
     const cities: string[] = Array.isArray(data.data) ? data.data : [data.data];
     const category = parseInt(data.cat, 10) || 1;
-    const source = classifySource(cities, category);
+
+    // Skip "all clear" alerts
+    if (category === 13) return;
+
+    const source = classifyAlertSource(cities, category, cities.length, new Date());
 
     const alert: StoredAlert = {
       id: data.id || `${Date.now()}`,
@@ -154,8 +123,12 @@ async function pollHistory() {
     for (const item of data) {
       const cities = typeof item.data === 'string' ? [item.data] : (item.data as unknown as string[]);
       const category = typeof item.category === 'number' ? item.category : parseInt(String(item.category), 10) || 1;
+
+      // Skip "all clear" alerts
+      if (category === 13) continue;
+
       const timestamp = new Date(item.alertDate).toISOString();
-      const source = classifySource(cities, category);
+      const source = classifyAlertSource(cities, category, cities.length, new Date(item.alertDate));
 
       const alert: StoredAlert = {
         id: `hist_${new Date(item.alertDate).getTime()}_${cities.join('|').slice(0, 20)}`,
@@ -193,20 +166,16 @@ console.log('  Polling history API every 60 seconds');
 console.log('  Status report every 5 minutes');
 console.log('  Press Ctrl+C to stop\n');
 
-// Initial data count
 const initial = readAlerts();
 console.log(`Current alert store: ${initial.length} alerts\n`);
 
-// Start polling
 setInterval(pollRealTime, 3000);
 setInterval(pollHistory, 60000);
 setInterval(printStatus, 5 * 60 * 1000);
 
-// Initial fetch
 pollRealTime();
 pollHistory();
 
-// Keep process alive
 process.on('SIGINT', () => {
   console.log('\nStopping poller...');
   const final = readAlerts();

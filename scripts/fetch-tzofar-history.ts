@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { StoredAlert, AlertSource } from '../src/lib/types';
+import { StoredAlert } from '../src/lib/types';
+import { classifyAlertSource } from '../src/lib/zones';
 
 const STORE_PATH = path.join(__dirname, '..', 'data', 'alerts.json');
 
@@ -13,40 +14,6 @@ const OREF_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 };
-
-// Source classification (same as fetch-oref-history.ts)
-const NORTH_KEYWORDS = [
-  'קריית שמונה', 'נהריה', 'צפת', 'עכו', 'כרמיאל', 'טבריה', 'מעלות',
-  'שלומי', 'מטולה', 'חצור הגלילית', 'ראש פינה', 'יסוד המעלה', 'קצרין',
-  'גליל', 'גולן', 'מרום הגליל', 'עמק הירדן',
-];
-const HAIFA_KEYWORDS = ['חיפה', 'קריות', 'נשר', 'טירת כרמל', 'עתלית'];
-
-function classifySource(cities: string[], category: number): AlertSource {
-  if (category === 14) return 'iran';
-
-  let hasNorth = false;
-  let hasCentralSouth = false;
-
-  for (const city of cities) {
-    const isNorth = NORTH_KEYWORDS.some((k) => city.includes(k));
-    const isHaifa = HAIFA_KEYWORDS.some((k) => city.includes(k));
-
-    if (isHaifa) {
-      hasNorth = true;
-      hasCentralSouth = true;
-    } else if (isNorth) {
-      hasNorth = true;
-    } else {
-      hasCentralSouth = true;
-    }
-  }
-
-  if (hasNorth && hasCentralSouth) return 'dual';
-  if (hasNorth) return 'hezbollah';
-  if (hasCentralSouth) return 'iran';
-  return 'unknown';
-}
 
 function readExistingAlerts(): StoredAlert[] {
   try {
@@ -70,15 +37,65 @@ function deduplicationKey(alert: StoredAlert): string {
   return `${alert.timestamp}_${alert.cities.sort().join('|')}`;
 }
 
-// Helper: format date as YYYY-MM-DD
 function formatDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-// Try multiple API endpoints to find historical data
+function addDays(d: Date, n: number): Date {
+  const result = new Date(d);
+  result.setDate(result.getDate() + n);
+  return result;
+}
+
+function formatDotDate(d: Date): string {
+  const dd = d.getDate().toString().padStart(2, '0');
+  const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+}
+
 interface FetchResult {
   alerts: StoredAlert[];
   source: string;
+}
+
+// Generic alert parser — handles multiple response formats
+function parseGenericAlert(item: unknown): StoredAlert | null {
+  if (!item || typeof item !== 'object') return null;
+  const obj = item as Record<string, unknown>;
+
+  const rawDate = obj.alertDate || obj.date || obj.timestamp || obj.time || obj.created_at;
+  if (!rawDate) return null;
+  const timestamp = new Date(String(rawDate));
+  if (isNaN(timestamp.getTime())) return null;
+
+  let cities: string[];
+  const rawCities = obj.data || obj.cities || obj.areas || obj.city;
+  if (Array.isArray(rawCities)) {
+    cities = rawCities.map(String);
+  } else if (typeof rawCities === 'string') {
+    cities = [rawCities];
+  } else {
+    return null;
+  }
+
+  const rawCat = obj.category || obj.cat || obj.type;
+  const category = rawCat ? parseInt(String(rawCat), 10) || 1 : 1;
+
+  // Skip "all clear" alerts
+  if (category === 13) return null;
+
+  const title = String(obj.title || '\u05D9\u05E8\u05D9 \u05E8\u05E7\u05D8\u05D5\u05EA \u05D5\u05D8\u05D9\u05DC\u05D9\u05DD');
+  const id = String(obj.id || `tzofar_${timestamp.getTime()}_${cities.join('|').slice(0, 20)}`);
+
+  return {
+    id,
+    timestamp: timestamp.toISOString(),
+    category,
+    title,
+    cities,
+    source: classifyAlertSource(cities, category, cities.length, timestamp),
+  };
 }
 
 // Approach 1: Tzofar / tzevaadom.co.il API
@@ -97,35 +114,18 @@ async function tryTzofar(): Promise<FetchResult> {
       const timeout = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(url, {
-        headers: {
-          ...OREF_HEADERS,
-          'Accept': 'application/json',
-        },
+        headers: { ...OREF_HEADERS, 'Accept': 'application/json' },
         signal: controller.signal,
       });
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        console.log(`    -> ${response.status} ${response.statusText}`);
-        continue;
-      }
+      if (!response.ok) { console.log(`    -> ${response.status} ${response.statusText}`); continue; }
 
-      const contentType = response.headers.get('content-type') || '';
       const text = await response.text();
+      if (!text || text.trim().length < 10) { console.log('    -> Empty response'); continue; }
 
-      if (!text || text.trim().length < 10) {
-        console.log('    -> Empty response');
-        continue;
-      }
-
-      // Try to parse as JSON
       let data: unknown;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.log('    -> Not valid JSON');
-        continue;
-      }
+      try { data = JSON.parse(text); } catch { console.log('    -> Not valid JSON'); continue; }
 
       if (!Array.isArray(data) || data.length === 0) {
         console.log(`    -> Response is ${Array.isArray(data) ? 'empty array' : typeof data}`);
@@ -134,7 +134,6 @@ async function tryTzofar(): Promise<FetchResult> {
 
       console.log(`    -> Got ${data.length} items!`);
 
-      // Parse whatever format we got
       const alerts: StoredAlert[] = [];
       for (const item of data) {
         try {
@@ -143,9 +142,7 @@ async function tryTzofar(): Promise<FetchResult> {
         } catch { /* skip malformed */ }
       }
 
-      if (alerts.length > 0) {
-        return { alerts, source: url };
-      }
+      if (alerts.length > 0) return { alerts, source: url };
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       console.log(`    -> Error: ${msg}`);
@@ -155,10 +152,66 @@ async function tryTzofar(): Promise<FetchResult> {
   return { alerts: [], source: 'none' };
 }
 
-// Approach 2: Oref history with date range parameters
+// Approach 2: Oref history day-by-day to avoid pagination limits
+async function tryOrefDayByDay(): Promise<FetchResult> {
+  console.log('  Fetching Oref history day by day...');
+
+  const startDate = new Date(WAR_START);
+  const endDate = new Date();
+  const allAlerts: StoredAlert[] = [];
+
+  let day = new Date(startDate);
+  while (day <= endDate) {
+    const dayEnd = addDays(day, 1);
+    const fromStr = formatDotDate(day);
+    const toStr = formatDotDate(dayEnd);
+
+    const urls = [
+      `https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${fromStr}&toDate=${toStr}`,
+      `https://www.oref.org.il/WarningMessages/History/AlertsHistory.json?fromDate=${formatDate(day)}&toDate=${formatDate(dayEnd)}`,
+    ];
+
+    for (const url of urls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
+        const response = await fetch(url, { headers: OREF_HEADERS, signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (!response.ok) continue;
+
+        const text = await response.text();
+        let data: unknown;
+        try { data = JSON.parse(text); } catch { continue; }
+
+        if (!Array.isArray(data) || data.length === 0) continue;
+
+        let dayCount = 0;
+        for (const item of data) {
+          try {
+            const alert = parseGenericAlert(item);
+            if (alert) { allAlerts.push(alert); dayCount++; }
+          } catch { /* skip */ }
+        }
+
+        if (dayCount > 0) {
+          console.log(`    ${formatDate(day)}: ${dayCount} alerts`);
+          break;
+        }
+      } catch { /* try next url */ }
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+    day = addDays(day, 1);
+  }
+
+  if (allAlerts.length > 0) return { alerts: allAlerts, source: 'oref-day-by-day' };
+  return { alerts: [], source: 'none' };
+}
+
+// Approach 3: Oref history with date range parameters
 async function tryOrefDateRange(): Promise<FetchResult> {
-  // Try fetching day by day from the Oref history endpoint
-  // The standard endpoint only returns last 24h, but some date params may work
   const dateParams = [
     `?fromDate=${WAR_START}&toDate=${formatDate(new Date())}`,
     `?start=${WAR_START}&end=${formatDate(new Date())}`,
@@ -174,55 +227,24 @@ async function tryOrefDateRange(): Promise<FetchResult> {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(url, {
-        headers: OREF_HEADERS,
-        signal: controller.signal,
-      });
+      const response = await fetch(url, { headers: OREF_HEADERS, signal: controller.signal });
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        console.log(`    -> ${response.status}`);
-        continue;
-      }
+      if (!response.ok) { console.log(`    -> ${response.status}`); continue; }
 
       const data = await response.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        console.log(`    -> Empty or invalid response`);
-        continue;
-      }
-
-      // Check if we got more than 24h of data
-      const dates = data
-        .filter((d: { alertDate?: string }) => d.alertDate)
-        .map((d: { alertDate: string }) => new Date(d.alertDate));
-
-      if (dates.length < 2) continue;
-
-      const oldest = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
-      const newest = new Date(Math.max(...dates.map((d: Date) => d.getTime())));
-      const spanHours = (newest.getTime() - oldest.getTime()) / (1000 * 60 * 60);
-
-      console.log(`    -> Got ${data.length} items spanning ${spanHours.toFixed(1)}h`);
+      if (!Array.isArray(data) || data.length === 0) { console.log('    -> Empty or invalid'); continue; }
 
       const alerts: StoredAlert[] = [];
       for (const item of data) {
         try {
-          const cities = typeof item.data === 'string' ? [item.data] : (item.data || []);
-          const category = parseInt(String(item.category || 1), 10);
-          const timestamp = new Date(item.alertDate).toISOString();
-
-          alerts.push({
-            id: `oref_${new Date(item.alertDate).getTime()}_${String(cities).slice(0, 20)}`,
-            timestamp,
-            category,
-            title: item.title || '\u05D9\u05E8\u05D9 \u05E8\u05E7\u05D8\u05D5\u05EA \u05D5\u05D8\u05D9\u05DC\u05D9\u05DD',
-            cities: Array.isArray(cities) ? cities : [cities],
-            source: classifySource(Array.isArray(cities) ? cities : [cities], category),
-          });
+          const alert = parseGenericAlert(item);
+          if (alert) alerts.push(alert);
         } catch { /* skip */ }
       }
 
       if (alerts.length > 0) {
+        console.log(`    -> Got ${alerts.length} threat alerts`);
         return { alerts, source: url };
       }
     } catch (error: unknown) {
@@ -234,11 +256,11 @@ async function tryOrefDateRange(): Promise<FetchResult> {
   return { alerts: [], source: 'none' };
 }
 
-// Approach 3: Oref Pakar history page AJAX endpoint
+// Approach 4: Oref Pakar AJAX endpoint
 async function tryOrefPakar(): Promise<FetchResult> {
   const endpoints = [
-    `https://alerts-history.oref.org.il/12481-en/Pakar.aspx/GetAlarmsHistory`,
-    `https://www.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=2`,
+    'https://alerts-history.oref.org.il/12481-en/Pakar.aspx/GetAlarmsHistory',
+    'https://www.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=2',
   ];
 
   for (const url of endpoints) {
@@ -249,10 +271,7 @@ async function tryOrefPakar(): Promise<FetchResult> {
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          ...OREF_HEADERS,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...OREF_HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fromDate: WAR_START.replace(/-/g, '.'),
           toDate: formatDate(new Date()).replace(/-/g, '.'),
@@ -261,33 +280,18 @@ async function tryOrefPakar(): Promise<FetchResult> {
       });
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        console.log(`    -> ${response.status}`);
-        continue;
-      }
+      if (!response.ok) { console.log(`    -> ${response.status}`); continue; }
 
       const text = await response.text();
       let data: unknown;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.log('    -> Not valid JSON');
-        continue;
-      }
+      try { data = JSON.parse(text); } catch { console.log('    -> Not valid JSON'); continue; }
 
-      // The response might be wrapped in { d: [...] } or { result: [...] }
-      const items = Array.isArray(data)
-        ? data
-        : Array.isArray((data as Record<string, unknown>)?.d)
-          ? (data as Record<string, unknown>).d as unknown[]
-          : Array.isArray((data as Record<string, unknown>)?.result)
-            ? (data as Record<string, unknown>).result as unknown[]
-            : null;
+      const items = Array.isArray(data) ? data
+        : Array.isArray((data as Record<string, unknown>)?.d) ? (data as Record<string, unknown>).d as unknown[]
+        : Array.isArray((data as Record<string, unknown>)?.result) ? (data as Record<string, unknown>).result as unknown[]
+        : null;
 
-      if (!items || items.length === 0) {
-        console.log(`    -> Empty or unexpected format`);
-        continue;
-      }
+      if (!items || items.length === 0) { console.log('    -> Empty or unexpected format'); continue; }
 
       console.log(`    -> Got ${items.length} items!`);
 
@@ -299,9 +303,7 @@ async function tryOrefPakar(): Promise<FetchResult> {
         } catch { /* skip */ }
       }
 
-      if (alerts.length > 0) {
-        return { alerts, source: url };
-      }
+      if (alerts.length > 0) return { alerts, source: url };
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       console.log(`    -> Error: ${msg}`);
@@ -311,63 +313,25 @@ async function tryOrefPakar(): Promise<FetchResult> {
   return { alerts: [], source: 'none' };
 }
 
-// Generic alert parser — handles multiple response formats
-function parseGenericAlert(item: unknown): StoredAlert | null {
-  if (!item || typeof item !== 'object') return null;
-  const obj = item as Record<string, unknown>;
-
-  // Extract timestamp
-  const rawDate = obj.alertDate || obj.date || obj.timestamp || obj.time || obj.created_at;
-  if (!rawDate) return null;
-  const timestamp = new Date(String(rawDate));
-  if (isNaN(timestamp.getTime())) return null;
-
-  // Extract cities
-  let cities: string[];
-  const rawCities = obj.data || obj.cities || obj.areas || obj.city;
-  if (Array.isArray(rawCities)) {
-    cities = rawCities.map(String);
-  } else if (typeof rawCities === 'string') {
-    cities = [rawCities];
-  } else {
-    return null;
-  }
-
-  // Extract category
-  const rawCat = obj.category || obj.cat || obj.type;
-  const category = rawCat ? parseInt(String(rawCat), 10) || 1 : 1;
-
-  // Extract title
-  const title = String(obj.title || '\u05D9\u05E8\u05D9 \u05E8\u05E7\u05D8\u05D5\u05EA \u05D5\u05D8\u05D9\u05DC\u05D9\u05DD');
-
-  // Extract or generate ID
-  const id = String(obj.id || `tzofar_${timestamp.getTime()}_${cities.join('|').slice(0, 20)}`);
-
-  return {
-    id,
-    timestamp: timestamp.toISOString(),
-    category,
-    title,
-    cities,
-    source: classifySource(cities, category),
-  };
-}
-
 async function main() {
   console.log(`Fetching historical alert data since ${WAR_START}...\n`);
   console.log('Attempting multiple data sources:\n');
 
-  // Try each approach
   console.log('1. Tzofar / Tzeva Adom API:');
   let result = await tryTzofar();
 
   if (result.alerts.length === 0) {
-    console.log('\n2. Oref history with date range parameters:');
+    console.log('\n2. Oref history day-by-day:');
+    result = await tryOrefDayByDay();
+  }
+
+  if (result.alerts.length === 0) {
+    console.log('\n3. Oref history with date range parameters:');
     result = await tryOrefDateRange();
   }
 
   if (result.alerts.length === 0) {
-    console.log('\n3. Oref Pakar AJAX endpoint:');
+    console.log('\n4. Oref Pakar AJAX endpoint:');
     result = await tryOrefPakar();
   }
 
@@ -376,14 +340,9 @@ async function main() {
     console.log('Could not fetch historical data from any source.');
     console.log('This is expected if you are not on an Israeli IP.');
     console.log('The Oref and Tzofar APIs are geo-blocked to Israel.\n');
-    console.log('Options:');
-    console.log('  1. Run this script from an Israeli IP / VPN');
-    console.log('  2. Use the live poller (npm run poll) to collect data in real-time');
-    console.log('  3. The app will still work with the existing seed data\n');
     return;
   }
 
-  // Merge with existing alerts
   const existing = readExistingAlerts();
   const existingKeys = new Set(existing.map(deduplicationKey));
 
@@ -397,15 +356,11 @@ async function main() {
     }
   }
 
-  // Sort descending by timestamp
   existing.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-
   writeAlerts(existing);
 
-  // Stats
   const sources = { iran: 0, hezbollah: 0, dual: 0, unknown: 0 };
   for (const a of existing) sources[a.source]++;
-
   const uniqueCities = new Set(existing.flatMap((a) => a.cities));
 
   console.log(`\nSource: ${result.source}`);

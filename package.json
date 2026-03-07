@@ -13,6 +13,7 @@
     "fetch-tzofar": "npx tsx scripts/fetch-tzofar-history.ts",
     "load-data": "npx tsx scripts/load-all-data.ts",
     "validate-data": "npx tsx scripts/validate-data.ts",
+    "reprocess": "npx tsx scripts/reprocess-data.ts",
     "poll": "npx tsx scripts/poll-live.ts"
   },
   "dependencies": {

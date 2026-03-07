@@ -48,10 +48,14 @@ function matchesZone(alert: Alert, zoneId: string, isNational: boolean): boolean
 function computeRawFactors(input: RiskInput) {
   const { zoneId, napDurationMinutes, alerts, currentTime } = input;
 
+  // Only count actual threat alerts for risk calculation (cat:1 rockets, cat:2 hostile aircraft).
+  // Cat:14 (pre-alert) and cat:13 (all clear) should NOT inflate risk numbers.
+  const threatAlerts = alerts.filter((a) => a.category === 1 || a.category === 2);
+
   const targetZone = findZoneByName(zoneId);
   const isNational = !!(targetZone && targetZone.isNational);
 
-  const zoneAlerts = alerts
+  const zoneAlerts = threatAlerts
     .filter((a) => matchesZone(a, zoneId, isNational))
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
@@ -108,7 +112,7 @@ function computeRawFactors(input: RiskInput) {
       ? 0.5
       : 0.5 + 1.5 * Math.exp(-timeSinceLastSeconds / (60 * 60));
 
-  const dualFrontStatus = isDualFrontActive(alerts, currentTime);
+  const dualFrontStatus = isDualFrontActive(threatAlerts, currentTime);
   const dualFrontMultiplier = dualFrontStatus.riskMultiplier;
 
   const timeOfDayMultiplier = getTimeOfDayMultiplier(currentTime.getHours());

@@ -20,6 +20,12 @@ export async function GET() {
   if (active && active.data && active.data.length > 0) {
     const id = active.id || Date.now().toString();
     const category = parseInt(active.cat, 10) || 1;
+
+    // Skip "all clear" alerts — not threats
+    if (category === 13) {
+      return NextResponse.json({ status: 'skipped_cat13', alert: null, historySynced: results.history });
+    }
+
     const now = new Date();
 
     // Get recent alerts for classification context
@@ -61,6 +67,9 @@ export async function GET() {
 
   let newFromHistory = 0;
   for (const item of history) {
+    // Skip "all clear" alerts
+    if (item.category === 13) continue;
+
     const cities = [item.data];
     const key = `${new Date(item.alertDate).toISOString()}_${cities.join(',')}`;
 

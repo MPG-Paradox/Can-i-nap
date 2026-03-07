@@ -144,8 +144,17 @@ describe('classifyAlertSource', () => {
     expect(source).toBe('dual');
   });
 
-  it('returns unknown for unrecognized cities', () => {
+  it('defaults unrecognized cities to iran (central/south)', () => {
     const source = classifyAlertSource(['\u05E2\u05D9\u05E8 \u05DC\u05D0 \u05E7\u05D9\u05D9\u05DE\u05EA'], 1, 1, new Date());
-    expect(source).toBe('unknown');
+    expect(source).toBe('iran');
+  });
+
+  it('classifies small northern communities via keyword fallback', () => {
+    // These are tiny kibbutzim not in zones-generated but should be Hezbollah
+    const source = classifyAlertSource(
+      ['\u05DE\u05E9\u05D2\u05D1 \u05E2\u05DD', '\u05D0\u05D1\u05D9\u05D1\u05D9\u05DD'],
+      1, 2, new Date()
+    );
+    expect(source).toBe('hezbollah');
   });
 });

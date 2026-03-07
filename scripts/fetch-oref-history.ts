@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { StoredAlert, AlertSource, OrefHistoryItem } from '../src/lib/types';
+import { StoredAlert, OrefHistoryItem } from '../src/lib/types';
+import { classifyAlertSource } from '../src/lib/zones';
 
 const STORE_PATH = path.join(__dirname, '..', 'data', 'alerts.json');
 
@@ -10,42 +11,6 @@ const OREF_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 };
-
-// Simplified source classification for standalone scripts (avoids importing
-// zones-generated which uses ESM and @/ paths).
-// Northern cities = hezbollah, central/south = iran.
-const NORTH_KEYWORDS = [
-  'קריית שמונה', 'נהריה', 'צפת', 'עכו', 'כרמיאל', 'טבריה', 'מעלות',
-  'שלומי', 'מטולה', 'חצור הגלילית', 'ראש פינה', 'יסוד המעלה', 'קצרין',
-  'גליל', 'גולן', 'מרום הגליל', 'עמק הירדן',
-];
-const HAIFA_KEYWORDS = ['חיפה', 'קריות', 'נשר', 'טירת כרמל', 'עתלית'];
-
-function classifySource(cities: string[], category: number): AlertSource {
-  if (category === 14) return 'iran';
-
-  let hasNorth = false;
-  let hasCentralSouth = false;
-
-  for (const city of cities) {
-    const isNorth = NORTH_KEYWORDS.some((k) => city.includes(k));
-    const isHaifa = HAIFA_KEYWORDS.some((k) => city.includes(k));
-
-    if (isHaifa) {
-      hasNorth = true;
-      hasCentralSouth = true;
-    } else if (isNorth) {
-      hasNorth = true;
-    } else {
-      hasCentralSouth = true;
-    }
-  }
-
-  if (hasNorth && hasCentralSouth) return 'dual';
-  if (hasNorth) return 'hezbollah';
-  if (hasCentralSouth) return 'iran';
-  return 'unknown';
-}
 
 function readExistingAlerts(): StoredAlert[] {
   try {
@@ -95,12 +60,15 @@ async function fetchOrefHistory(): Promise<OrefHistoryItem[]> {
   }
 }
 
-function parseHistoryItem(item: OrefHistoryItem): StoredAlert {
-  // The history "data" field is a single string, not an array
+function parseHistoryItem(item: OrefHistoryItem): StoredAlert | null {
   const cities = typeof item.data === 'string' ? [item.data] : (item.data as unknown as string[]);
   const category = typeof item.category === 'number' ? item.category : parseInt(String(item.category), 10) || 1;
+
+  // Skip "all clear" alerts — not threats
+  if (category === 13) return null;
+
   const timestamp = new Date(item.alertDate).toISOString();
-  const source = classifySource(cities, category);
+  const source = classifyAlertSource(cities, category, cities.length, new Date(item.alertDate));
 
   return {
     id: `oref_${new Date(item.alertDate).getTime()}_${cities.join('|').slice(0, 30)}`,
@@ -128,8 +96,21 @@ async function main() {
 
   console.log(`Received ${historyItems.length} alerts from Oref history API`);
 
-  // Parse all items
-  const newAlerts = historyItems.map(parseHistoryItem);
+  // Parse all items, filtering out cat:13
+  const newAlerts: StoredAlert[] = [];
+  let skippedCat13 = 0;
+  for (const item of historyItems) {
+    const alert = parseHistoryItem(item);
+    if (alert) {
+      newAlerts.push(alert);
+    } else {
+      skippedCat13++;
+    }
+  }
+
+  if (skippedCat13 > 0) {
+    console.log(`Skipped ${skippedCat13} cat:13 "all clear" entries`);
+  }
 
   // Load existing and deduplicate
   const existing = readExistingAlerts();

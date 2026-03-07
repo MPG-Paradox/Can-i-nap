@@ -60,6 +60,64 @@ export function getZonesForRegion(regionName: string): Zone[] {
   });
 }
 
+// Comprehensive keyword lists for classifying cities NOT in the zone database.
+// Many small kibbutzim and communities won't have zone entries.
+const NORTHERN_KEYWORDS = [
+  // Upper Galilee
+  'מטולה', 'שלומי', 'ראש הנקרה', 'מנרה', 'משגב עם', 'יפתח', 'דפנה',
+  'דן', 'סנונית', 'בית הלל', 'שדה נחמיה', 'כפר גלעדי', 'תל חי',
+  'אביבים', 'יראון', 'ברעם', 'דישון', 'מלכיה', 'רמות נפתלי',
+  'אילון', 'גורן', 'שומרה', 'חניתה', 'אדמית',
+  'בצת', 'לימן', 'געתון', 'כברי', 'מצובה', 'סאסא',
+  'פקיעין', 'חורפיש', 'ירכא', 'כסרא',
+  // Finger of Galilee
+  'קריית שמונה', 'חצור הגלילית', 'ראש פינה', 'יסוד המעלה',
+  'עמיר', 'גדות', 'שדה אליעזר', 'איילת השחר', 'משמר הירדן',
+  'מחניים', 'גונן', 'לבנים', 'נאות מרדכי',
+  // Hula Valley
+  'כפר בלום', 'שמיר', 'חגושרים', 'הגושרים',
+  // Golan Heights
+  'קצרין', 'מסעדה', 'בוקעתא', 'אל רום',
+  'חספין', 'אניעם', 'רמת מגשימים',
+  // Western Galilee
+  'נהריה', 'עכו', 'מעלות', 'תרשיחא', 'מעלות-תרשיחא',
+  'כרמיאל', 'מעיליא',
+  // Lower Galilee
+  'צפת', 'טבריה', 'מגדל', 'כינרת', 'דגניה',
+  // Regional council keywords
+  'גליל עליון', 'גליל תחתון', 'גליל מערבי', 'רמת הגולן',
+  'מבואות החרמון', 'אצבע הגליל', 'מטה אשר', 'מעלה יוסף',
+  'משגב', 'מרום הגליל', 'עמק החולה',
+  // General northern keywords (broad catch)
+  'גליל', 'גולן',
+  // Small communities frequently in alerts
+  'נווה זיו', 'שבי ציון', 'בוסתן הגליל', 'עין יעקב',
+  'כישור', 'יחיעם', 'גשר הזיו', 'חנותה', 'אבן מנחם',
+  'צורית', 'מנות', 'לפידות', 'כמון', 'גילון',
+  'יודפת', 'הררית', 'מורשת', 'עילבון', 'ריינה',
+  'כפר מנדא', 'דיר אל-אסד', 'מג\'ד אל-כרום',
+  'שפרעם', 'סח\'נין', 'עראבה', 'דיר חנא',
+  'כאוכב אבו אל-היג\'א', 'טמרה',
+  'חרשים', 'שזור', 'עין אל-אסד',
+  'כליל', 'טובא-זנגריה',
+  'מרגליות', 'מעיין ברוך', 'כפר יובל', 'חוף אכזיב',
+  'עין גב', 'האון', 'רמת מגשימים', 'מבוא חמה',
+];
+
+const HAIFA_KEYWORDS = [
+  'חיפה', 'קריות', 'קרית', 'טירת כרמל', 'נשר', 'עתלית',
+  'רכסים', 'יוקנעם', 'כרמל',
+  'קריית אתא', 'קריית ביאליק', 'קריית מוצקין', 'קריית ים',
+];
+
+function isNorthernCity(city: string): boolean {
+  return NORTHERN_KEYWORDS.some(kw => city.includes(kw) || kw.includes(city));
+}
+
+function isHaifaCity(city: string): boolean {
+  return HAIFA_KEYWORDS.some(kw => city.includes(kw) || kw.includes(city));
+}
+
 export function classifyAlertSource(
   cities: string[],
   category: number = 1,
@@ -96,15 +154,29 @@ export function classifyAlertSource(
   let hasCentralSouth = false;
 
   for (const city of cities) {
+    // First try the zone database
     const zone = findZoneByName(city);
-    if (!zone) continue;
+    if (zone) {
+      if (zone.district === 'haifa') {
+        hasNorth = true;
+        hasCentralSouth = true;
+      } else if (zone.district === 'north') {
+        hasNorth = true;
+      } else {
+        hasCentralSouth = true;
+      }
+      continue;
+    }
 
-    if (zone.district === 'haifa') {
+    // Fallback: keyword-based region detection for cities NOT in our database.
+    // Many small kibbutzim and communities in the north aren't in zones-generated.
+    if (isNorthernCity(city)) {
+      hasNorth = true;
+    } else if (isHaifaCity(city)) {
       hasNorth = true;
       hasCentralSouth = true;
-    } else if (zone.district === 'north') {
-      hasNorth = true;
     } else {
+      // Default: assume central/south (most of Israel's population)
       hasCentralSouth = true;
     }
   }

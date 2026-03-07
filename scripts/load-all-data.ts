@@ -16,6 +16,21 @@ function countAlerts(): number {
   }
 }
 
+function runStep(name: string, command: string, timeout: number) {
+  console.log(`--- ${name} ---\n`);
+  try {
+    execSync(command, {
+      cwd: path.join(__dirname, '..'),
+      stdio: 'inherit',
+      timeout,
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log(`${name} failed: ${msg}`);
+    console.log('Continuing with next step...\n');
+  }
+}
+
 async function main() {
   console.log('='.repeat(50));
   console.log(' CAN I NAP? -- Master Data Loader');
@@ -25,52 +40,26 @@ async function main() {
   const initialCount = countAlerts();
   console.log(`Starting alert count: ${initialCount}\n`);
 
-  // Step 1: Fetch historical data (Tzofar / external sources)
-  console.log('--- Step 1: Fetching historical data ---\n');
-  try {
-    execSync('npx tsx scripts/fetch-tzofar-history.ts', {
-      cwd: path.join(__dirname, '..'),
-      stdio: 'inherit',
-      timeout: 120000,
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.log(`Historical fetch failed or timed out: ${msg}`);
-    console.log('Continuing with next step...\n');
-  }
+  // Step 1: Fetch historical data (Tzofar / external sources with day-by-day)
+  runStep('Step 1: Fetching historical data', 'npx tsx scripts/fetch-tzofar-history.ts', 300000);
 
   const afterHistorical = countAlerts();
   console.log(`\nAlerts after historical fetch: ${afterHistorical} (+${afterHistorical - initialCount})\n`);
 
   // Step 2: Fetch Oref 24h history
-  console.log('--- Step 2: Fetching Oref 24h history ---\n');
-  try {
-    execSync('npx tsx scripts/fetch-oref-history.ts', {
-      cwd: path.join(__dirname, '..'),
-      stdio: 'inherit',
-      timeout: 60000,
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.log(`Oref history fetch failed: ${msg}`);
-    console.log('Continuing with next step...\n');
-  }
+  runStep('Step 2: Fetching Oref 24h history', 'npx tsx scripts/fetch-oref-history.ts', 60000);
 
   const afterOref = countAlerts();
   console.log(`\nAlerts after Oref history: ${afterOref} (+${afterOref - afterHistorical})\n`);
 
-  // Step 3: Run validation
-  console.log('--- Step 3: Validating data ---\n');
-  try {
-    execSync('npx tsx scripts/validate-data.ts', {
-      cwd: path.join(__dirname, '..'),
-      stdio: 'inherit',
-      timeout: 30000,
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.log(`Validation failed: ${msg}`);
-  }
+  // Step 3: Reprocess — remove cat:13, re-classify with fixed keywords
+  runStep('Step 3: Reprocessing data', 'npx tsx scripts/reprocess-data.ts', 60000);
+
+  const afterReprocess = countAlerts();
+  console.log(`\nAlerts after reprocessing: ${afterReprocess}\n`);
+
+  // Step 4: Validate
+  runStep('Step 4: Validating data', 'npx tsx scripts/validate-data.ts', 30000);
 
   // Summary
   const finalCount = countAlerts();
@@ -78,8 +67,8 @@ async function main() {
   console.log(' SUMMARY');
   console.log('='.repeat(50));
   console.log(`  Initial alerts: ${initialCount}`);
-  console.log(`  Final alerts:   ${finalCount}`);
-  console.log(`  New alerts:     ${finalCount - initialCount}`);
+  console.log(`  After fetch:    ${afterOref}`);
+  console.log(`  After cleanup:  ${finalCount}`);
   console.log();
 
   if (finalCount === initialCount) {
@@ -87,9 +76,8 @@ async function main() {
     console.log('  - You are not on an Israeli IP (APIs are geo-blocked)');
     console.log('  - The data was already up to date');
     console.log('\nTo collect real data, run: npm run poll');
-    console.log('(Keep it running in a separate terminal from an Israeli IP)');
   } else {
-    console.log('Data loaded successfully!');
+    console.log('Data loaded and processed successfully!');
     console.log('Run `npm run dev` to see the app with real data.');
   }
 }
