@@ -1,8 +1,13 @@
 export const en = {
   appName: 'Can I Nap?',
+  tagline: 'Check if you can nap without an alert waking you up',
   whereAreYou: 'Where are you?',
   useMyLocation: 'Use my location',
   searchPlaceholder: 'Search for your city...',
+  noResults: 'No cities found',
+  or: 'or',
+  locationError: 'Location access denied',
+  locating: 'Locating...',
   riskLabel: 'chance of interruption',
   forNap: 'for a {duration}-minute nap in {zone}',
   duration: 'Nap duration',
