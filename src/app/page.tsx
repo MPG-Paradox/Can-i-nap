@@ -159,8 +159,15 @@ function MainApp() {
     }).catch(() => {});
 
     // Step 3: Poll real-time every 30s, refresh local store every 30s
-    const pollId = setInterval(() => {
-      fetch('/api/poll').catch(() => {});
+    const pollId = setInterval(async () => {
+      try {
+        const res = await fetch('/api/poll');
+        const data = await res.json();
+        if (data.newAlerts > 0) {
+          // New alert detected — immediately sync history for full picture
+          fetch('/api/fetch-history').catch(() => {});
+        }
+      } catch {}
       fetchAlerts();
     }, 30_000);
 
