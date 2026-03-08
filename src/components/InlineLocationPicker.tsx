@@ -214,7 +214,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
         {isOpen && query.trim().length > 0 && (
           <div
             ref={listRef}
-            className="absolute top-full mt-2 w-full glass-card rounded-xl shadow-2xl shadow-black/40 max-h-[250px] overflow-y-auto z-50"
+            className="absolute top-full mt-2 w-full glass-card rounded-xl shadow-2xl shadow-black/50 max-h-[300px] overflow-y-auto z-[100]"
           >
             {results.length === 0 ? (
               <div className="px-4 py-3 text-slate-500 text-center text-sm">{t.noResults}</div>

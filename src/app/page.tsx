@@ -16,7 +16,7 @@ import DurationButtons from '@/components/DurationButtons';
 import InlineLocationPicker from '@/components/InlineLocationPicker';
 import StatsCards from '@/components/StatsCards';
 import ActiveThreatOverlay from '@/components/ActiveThreatOverlay';
-import ShareButton from '@/components/ShareButton';
+import Footer from '@/components/Footer';
 
 const AnimatedBackground = dynamic(
   () => import('@/components/ui/AnimatedBackground').catch(() => {
@@ -380,7 +380,7 @@ function MainApp() {
               <MemoizedDurationButtons value={napDuration} onChange={setNapDuration} />
             </div>
 
-            <div className="w-full mt-6 stagger-4" ref={locationRef}>
+            <div className="w-full mt-6 stagger-4 relative z-[60]" ref={locationRef}>
               <MemoizedInlineLocationPicker
                 currentZone={zoneName}
                 onZoneChange={handleZoneChange}
@@ -412,38 +412,11 @@ function MainApp() {
               />
             </div>
 
-            <footer className="w-full mt-10 stagger-7">
-              <div className="glass-card rounded-2xl p-5 text-center space-y-3">
-                <ShareButton
-                  riskPercent={risk.riskPercent}
-                  napDuration={napDuration}
-                  zoneName={displayName}
-                />
-                <p className="text-xs text-slate-500">{t.disclaimer}</p>
-                <p className="text-xs text-slate-400">
-                  {t.dataSource}:{' '}
-                  <a
-                    href="https://www.oref.org.il/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-amber-400/60 hover:text-amber-400 underline underline-offset-2 transition-colors"
-                  >
-                    {t.pikudHaoref}
-                  </a>
-                </p>
-                <p className="text-xs text-slate-400">
-                  {t.lastUpdated}: {lastUpdateTime}
-                </p>
-                <a
-                  href="https://www.linkedin.com/in/emil-el-asmar-59a4a629a/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block text-xs text-amber-400/60 hover:text-amber-400 underline underline-offset-2 transition-colors"
-                >
-                  Emil El Asmar — LinkedIn
-                </a>
-              </div>
-            </footer>
+            <Footer
+              lastUpdateTime={lastUpdateTime}
+              riskPercent={risk.riskPercent}
+              napDuration={napDuration}
+            />
           </>
         ) : (
           <div className="mt-12 text-center stagger-2">
