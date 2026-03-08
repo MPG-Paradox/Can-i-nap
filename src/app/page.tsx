@@ -138,21 +138,29 @@ function MainApp() {
     }
   }, []);
 
-  // Startup: fetch history once, initial poll, then periodic fetch + poll
+  // Startup: load local data first (fast), then background-sync history
   useEffect(() => {
-    fetch('/api/fetch-history').catch(() => {});
-    fetch('/api/poll').catch(() => {});
+    // Step 1: Load cached alerts immediately (local store — fast)
     fetchAlerts();
 
-    // Poll Oref every 5s, fetch our store every 30s
-    let pollCount = 0;
+    // Step 2: Background history sync (slow, may fail — that's fine)
+    fetch('/api/fetch-history').catch(() => {});
+
+    // Step 3: Poll real-time every 30s, refresh local store every 30s
     const pollId = setInterval(() => {
       fetch('/api/poll').catch(() => {});
-      pollCount++;
-      if (pollCount % 6 === 0) fetchAlerts();
-    }, 5000);
+      fetchAlerts();
+    }, 30_000);
 
-    return () => clearInterval(pollId);
+    // Step 4: Re-sync history every 5 minutes
+    const historyId = setInterval(() => {
+      fetch('/api/fetch-history').catch(() => {});
+    }, 300_000);
+
+    return () => {
+      clearInterval(pollId);
+      clearInterval(historyId);
+    };
   }, [fetchAlerts]);
 
   // Tick timer (1s) for StatsCards + staleness
@@ -160,7 +168,7 @@ function MainApp() {
   useEffect(() => {
     const tickId = setInterval(() => {
       setTickTime(new Date());
-      if (Date.now() - lastFetchRef.current > 60000) {
+      if (Date.now() - lastFetchRef.current > 90000) {
         setConnectionStatus((prev) => (prev === 'connected' ? 'reconnecting' : prev));
       }
     }, 1000);

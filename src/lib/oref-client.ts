@@ -8,22 +8,25 @@ const OREF_HEADERS = {
 
 export async function fetchActiveAlert(): Promise<OrefRealTimeResponse | null> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
     const response = await fetch(
       'https://www.oref.org.il/WarningMessages/alert/alerts.json',
       {
         headers: OREF_HEADERS,
-        signal: controller.signal,
+        signal: AbortSignal.timeout(5000),
       }
     );
 
-    clearTimeout(timeout);
-
     const text = await response.text();
+
+    // Empty or array-empty = no active alert
     if (!text || text.trim() === '' || text.trim() === '[]') {
       return null;
+    }
+
+    // Only parse if it looks like JSON
+    const firstChar = text.trim()[0];
+    if (firstChar !== '{' && firstChar !== '[') {
+      return null; // HTML error/block page — silently ignore
     }
 
     const parsed = JSON.parse(text) as OrefRealTimeResponse;
@@ -32,31 +35,39 @@ export async function fetchActiveAlert(): Promise<OrefRealTimeResponse | null> {
     }
 
     return null;
-  } catch (error) {
-    console.error('Failed to fetch active alert:', error);
-    return null;
+  } catch {
+    return null; // Silently fail — API unavailable is normal
   }
 }
 
 export async function fetchAlertHistory(): Promise<OrefHistoryItem[]> {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
     const response = await fetch(
       'https://www.oref.org.il/WarningMessages/History/AlertsHistory.json',
       {
         headers: OREF_HEADERS,
-        signal: controller.signal,
+        signal: AbortSignal.timeout(5000),
       }
     );
 
-    clearTimeout(timeout);
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+      // API returned HTML (block page, error page, etc.) — not JSON
+      return [];
+    }
 
-    const data = (await response.json()) as OrefHistoryItem[];
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Failed to fetch alert history:', error);
-    return [];
+    const text = await response.text();
+    if (!text || text.trim() === '' || text.trim() === '[]') {
+      return [];
+    }
+
+    const firstChar = text.trim()[0];
+    if (firstChar !== '[' && firstChar !== '{') {
+      return []; // Not JSON — probably HTML error page
+    }
+
+    return JSON.parse(text);
+  } catch {
+    return []; // Silently fail — API unavailable is normal
   }
 }

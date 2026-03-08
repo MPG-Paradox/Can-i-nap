@@ -45,6 +45,7 @@ export async function GET() {
 
     return NextResponse.json({ status: 'ok', newAlerts });
   } catch {
-    return NextResponse.json({ status: 'error', message: 'Failed to fetch history' }, { status: 500 });
+    // Silently return — API unavailable is normal (geo-blocked, etc.)
+    return NextResponse.json({ status: 'unavailable', newAlerts: 0 });
   }
 }
