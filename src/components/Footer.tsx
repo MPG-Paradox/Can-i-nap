@@ -67,7 +67,7 @@ export default function Footer({ lastUpdateTime, riskPercent, napDuration }: Foo
           rel="noopener noreferrer"
           className="text-amber-400/60 hover:text-amber-400 underline transition-colors"
         >
-          Emil El Asmar
+          LinkedIn
         </a>
       </p>
     </footer>
