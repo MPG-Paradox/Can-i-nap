@@ -95,11 +95,11 @@ const AnimatedBackground = memo(() => {
             for (float i = 0.0; i < 20.0; i++) {
               vec2 v = p + cos(i * i + (iTime + p.x * 0.08) * 0.02 + i * vec2(13.0, 11.0)) * 3.5;
 
-              // Deep indigo/navy aurora — matches app theme
+              // Warm yellow/amber aurora — rocket trail aesthetic
               vec4 auroraColors = vec4(
-                0.02 + 0.08 * sin(i * 0.2 + iTime * 0.3),
-                0.05 + 0.12 * cos(i * 0.3 + iTime * 0.4),
-                0.15 + 0.15 * sin(i * 0.4 + iTime * 0.25),
+                0.18 + 0.12 * sin(i * 0.2 + iTime * 0.3),
+                0.12 + 0.08 * cos(i * 0.3 + iTime * 0.4),
+                0.02 + 0.03 * sin(i * 0.4 + iTime * 0.25),
                 1.0
               );
 
