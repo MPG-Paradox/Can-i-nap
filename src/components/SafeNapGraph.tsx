@@ -27,7 +27,7 @@ interface SafeNapGraphProps {
 interface TimelinePoint {
   time: number;
   timeLabel: string;
-  riskPercent: number;
+  safetyPercent: number;
   isPast: boolean;
 }
 
@@ -43,7 +43,7 @@ export default function SafeNapGraph({
 
   const { data, bestTimeLabel, nowIndex } = useMemo(() => {
     const points: TimelinePoint[] = [];
-    let bestRisk = Infinity;
+    let bestSafety = -Infinity;
     let bestTime: Date | null = null;
     let nIdx = 0;
 
@@ -55,10 +55,11 @@ export default function SafeNapGraph({
         { zoneId, napDurationMinutes: napDuration, alerts, currentTime: time },
         weights
       );
+      const safety = 100 - risk.riskPercent;
       const point: TimelinePoint = {
         time: time.getTime(),
         timeLabel: formatGraphTimeLabel(time, prevTime),
-        riskPercent: risk.riskPercent,
+        safetyPercent: safety,
         isPast: time.getTime() < currentTime.getTime(),
       };
       points.push(point);
@@ -66,9 +67,9 @@ export default function SafeNapGraph({
 
       if (offset === 0) nIdx = points.length - 1;
 
-      // Best future time only
-      if (offset >= 0 && risk.riskPercent < bestRisk) {
-        bestRisk = risk.riskPercent;
+      // Best future time = highest safety
+      if (offset >= 0 && safety > bestSafety) {
+        bestSafety = safety;
         bestTime = time;
       }
     }
@@ -118,9 +119,9 @@ export default function SafeNapGraph({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+              <linearGradient id="safetyGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis
@@ -145,7 +146,7 @@ export default function SafeNapGraph({
                 color: '#e2e8f0',
                 fontSize: '13px',
               }}
-              formatter={(value) => [`${value}%`, 'Risk']}
+              formatter={(value) => [`${value}%`, t.safety]}
               labelFormatter={(label) => String(label)}
             />
             {/* Alert markers */}
@@ -179,10 +180,10 @@ export default function SafeNapGraph({
             )}
             <Area
               type="monotone"
-              dataKey="riskPercent"
-              stroke="#818cf8"
+              dataKey="safetyPercent"
+              stroke="#4ade80"
               strokeWidth={2}
-              fill="url(#riskGradient)"
+              fill="url(#safetyGradient)"
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -180,7 +180,8 @@ export function calculateNapRiskWeighted(
     dualFrontModuleRisk * w.dualFront +
     timeOfDayModuleRisk * w.timeOfDay;
 
-  const riskPercent = Math.min(99, Math.max(0, Math.round(weightedRisk * 100)));
+  // Preserve one decimal for UI display precision (e.g., 97.2% vs 97%)
+  const riskPercent = Math.min(99, Math.max(0, Math.round(weightedRisk * 1000) / 10));
 
   return {
     riskPercent,

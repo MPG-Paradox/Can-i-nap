@@ -2,6 +2,8 @@ import { getRecentAlerts } from '@/lib/alert-store';
 
 export const dynamic = 'force-dynamic';
 
+// PRODUCTION TODO: Add connection limits per IP. Each SSE client holds a long-lived connection.
+// For production, use a single poller server and fan out via a message broker, not per-client polling.
 export async function GET() {
   const encoder = new TextEncoder();
   let lastAlertId = '';

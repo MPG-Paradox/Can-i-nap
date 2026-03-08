@@ -122,8 +122,12 @@ function MainApp() {
     };
   }, []);
 
-  // Trigger the poller every 5 seconds
+  // On startup: fetch history once, then poll every 5 seconds
   useEffect(() => {
+    // One-time history fetch to fill gaps on app startup
+    fetch('/api/fetch-history').catch(() => {});
+    // Trigger the poller immediately, then every 5 seconds
+    fetch('/api/poll').catch(() => {});
     const pollId = setInterval(async () => {
       try { await fetch('/api/poll'); } catch { /* silently fail */ }
     }, 5000);
@@ -292,7 +296,12 @@ function MainApp() {
             </div>
 
             <div className="w-full mt-6">
-              <DualFrontCard status={risk.dualFrontStatus} />
+              <DualFrontCard
+                status={risk.dualFrontStatus}
+                alerts={alerts}
+                zoneId={zone!.hebrewName}
+                isNational={isNational}
+              />
             </div>
 
             <div className="w-full mt-6">

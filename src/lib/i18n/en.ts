@@ -91,4 +91,10 @@ export const en = {
   daysAgo: '{days}d ago',
   hoursAgo: '{hours}h ago',
   noAlertsEver: 'No alerts recorded',
+  safety: 'Safety',
+  last30min: 'last 30 min',
+  last6h: 'last 6h',
+  yourZone: 'Your zone',
+  national: 'national',
+  almostCertain: 'Almost certain interruption',
 };

@@ -30,8 +30,9 @@ export default function RiskDial({ riskPercent }: RiskDialProps) {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(from + (to - from) * eased);
-      setDisplayValue(current);
+      const current = from + (to - from) * eased;
+      // Show one decimal for high risk (>90%), integer otherwise
+      setDisplayValue(to > 90 ? Math.round(current * 10) / 10 : Math.round(current));
 
       if (progress < 1) {
         animFrameRef.current = requestAnimationFrame(tick);

@@ -7,6 +7,8 @@ import { registerPreAlert } from '@/lib/pre-alert-tracker';
 
 export const dynamic = 'force-dynamic';
 
+// PRODUCTION TODO: Use a single poller server (not per-client polling) to avoid
+// overwhelming the Oref API. Add rate limiting for public deployment.
 export async function GET() {
   const results: { realtime: string; history: string } = {
     realtime: 'no_active_alert',
