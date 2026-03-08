@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense, memo } from 'react';
 import dynamic from 'next/dynamic';
 import { useLanguage } from '@/lib/i18n/context';
 import { findZoneByName } from '@/lib/zones';
@@ -36,6 +36,12 @@ const CalculationPanel = dynamic(() => import('@/components/CalculationPanel'), 
   loading: () => <div className="h-[200px] glass-card rounded-2xl skeleton" />,
   ssr: false,
 });
+
+// Memoize components that don't depend on tickTime
+const MemoizedRiskDial = memo(RiskDial);
+const MemoizedDurationButtons = memo(DurationButtons);
+const MemoizedDualFrontCard = memo(DualFrontCard);
+const MemoizedInlineLocationPicker = memo(InlineLocationPicker);
 
 function toAlert(stored: StoredAlert): Alert {
   return { ...stored, timestamp: new Date(stored.timestamp) };
@@ -96,6 +102,9 @@ function MainApp() {
   // Graph recalc key — only recalculate expensive timeline when data actually changes
   const [graphRecalcKey, setGraphRecalcKey] = useState(0);
 
+  // Deferred graph rendering — wait for initial load before rendering graph
+  const [graphReady, setGraphReady] = useState(false);
+
   // Active threat overlay state
   const [activeOverlay, setActiveOverlay] = useState<{
     type: 'active-alert' | 'pre-alert';
@@ -143,8 +152,11 @@ function MainApp() {
     // Step 1: Load cached alerts immediately (local store — fast)
     fetchAlerts();
 
-    // Step 2: Background history sync (slow, may fail — that's fine)
-    fetch('/api/fetch-history').catch(() => {});
+    // Step 2: Background archive fetch (slow but gets fresh data)
+    fetch('/api/fetch-history').then(() => {
+      // Refresh local store after archive sync
+      fetchAlerts();
+    }).catch(() => {});
 
     // Step 3: Poll real-time every 30s, refresh local store every 30s
     const pollId = setInterval(() => {
@@ -154,7 +166,7 @@ function MainApp() {
 
     // Step 4: Re-sync history every 5 minutes
     const historyId = setInterval(() => {
-      fetch('/api/fetch-history').catch(() => {});
+      fetch('/api/fetch-history').then(() => fetchAlerts()).catch(() => {});
     }, 300_000);
 
     return () => {
@@ -162,6 +174,12 @@ function MainApp() {
       clearInterval(historyId);
     };
   }, [fetchAlerts]);
+
+  // Defer graph rendering — wait 2 seconds after initial load
+  useEffect(() => {
+    const timer = setTimeout(() => setGraphReady(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Tick timer (1s) for StatsCards + staleness
   // Calc timer (30s) for main risk dial
@@ -327,7 +345,7 @@ function MainApp() {
         ) : risk ? (
           <>
             <div className="mt-8 stagger-2">
-              <RiskDial riskPercent={risk.riskPercent} />
+              <MemoizedRiskDial riskPercent={risk.riskPercent} />
             </div>
 
             <div className="stagger-2">
@@ -345,11 +363,11 @@ function MainApp() {
             )}
 
             <div className="w-full mt-8 stagger-3">
-              <DurationButtons value={napDuration} onChange={setNapDuration} />
+              <MemoizedDurationButtons value={napDuration} onChange={setNapDuration} />
             </div>
 
             <div className="w-full mt-6 stagger-4" ref={locationRef}>
-              <InlineLocationPicker
+              <MemoizedInlineLocationPicker
                 currentZone={zoneName}
                 onZoneChange={handleZoneChange}
               />
@@ -360,7 +378,7 @@ function MainApp() {
             </div>
 
             <div className="w-full mt-6 stagger-5">
-              <DualFrontCard
+              <MemoizedDualFrontCard
                 status={risk.dualFrontStatus}
                 alerts={alerts}
                 zoneId={zone!.hebrewName}
@@ -368,16 +386,18 @@ function MainApp() {
               />
             </div>
 
-            <div className="w-full mt-6 stagger-6">
-              <SafeNapGraph
-                zoneId={zone!.hebrewName}
-                napDuration={napDuration}
-                alerts={alerts}
-                currentTime={graphTime}
-                weights={weights}
-                onRefresh={fetchAlerts}
-              />
-            </div>
+            {graphReady && (
+              <div className="w-full mt-6 stagger-6">
+                <SafeNapGraph
+                  zoneId={zone!.hebrewName}
+                  napDuration={napDuration}
+                  alerts={alerts}
+                  currentTime={graphTime}
+                  weights={weights}
+                  onRefresh={fetchAlerts}
+                />
+              </div>
+            )}
 
             <div className="w-full mt-6 stagger-7">
               <CalculationPanel
@@ -412,7 +432,7 @@ function MainApp() {
           </>
         ) : (
           <div className="mt-12 text-center stagger-2">
-            <RiskDial riskPercent={0} />
+            <MemoizedRiskDial riskPercent={0} />
             <p className="mt-4 text-sm text-slate-400">{t.noAlerts}</p>
           </div>
         )}

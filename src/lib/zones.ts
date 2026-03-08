@@ -79,6 +79,10 @@ const NORTHERN_KEYWORDS = [
   // Golan Heights
   'קצרין', 'מסעדה', 'בוקעתא', 'אל רום',
   'חספין', 'אניעם', 'רמת מגשימים',
+  'חד נס', 'אורטל', 'עין זיוון', 'נווה אטיב', 'מרום גולן',
+  'אלוני הבשן', 'קלע', 'יונתן', 'אפיק', 'גבעת יואב',
+  'נאות גולן', 'רמות', 'כנף', 'שעל', 'מבוא חמה',
+  'עין גב', 'האון', 'קשת', 'נוב',
   // Western Galilee
   'נהריה', 'עכו', 'מעלות', 'תרשיחא', 'מעלות-תרשיחא',
   'כרמיאל', 'מעיליא',
@@ -90,7 +94,7 @@ const NORTHERN_KEYWORDS = [
   'משגב', 'מרום הגליל', 'עמק החולה',
   // General northern keywords (broad catch)
   'גליל', 'גולן',
-  // Small communities frequently in alerts
+  // Small communities frequently in alerts — top alerted cities from data
   'נווה זיו', 'שבי ציון', 'בוסתן הגליל', 'עין יעקב',
   'כישור', 'יחיעם', 'גשר הזיו', 'חנותה', 'אבן מנחם',
   'צורית', 'מנות', 'לפידות', 'כמון', 'גילון',
@@ -101,7 +105,14 @@ const NORTHERN_KEYWORDS = [
   'חרשים', 'שזור', 'עין אל-אסד',
   'כליל', 'טובא-זנגריה',
   'מרגליות', 'מעיין ברוך', 'כפר יובל', 'חוף אכזיב',
-  'עין גב', 'האון', 'רמת מגשימים', 'מבוא חמה',
+  'רמת מגשימים',
+  // Coastal north communities — prefix matches for חוף (coast) entries
+  'חוף אכזיב', 'חוף בצת', 'חוף דור', 'חוף הכרמל',
+  // Industrial zones near northern border
+  'איזור תעשייה מילואות', 'איזור תעשייה בר-לב',
+  // Additional frequently-alerted northern communities
+  'שומרת', 'עין יעקב', 'מכמנים', 'עצמון', 'ורד הגליל',
+  'אמנון', 'חולתה', 'כפר סאלד', 'מישמר הירדן',
 ];
 
 const HAIFA_KEYWORDS = [
@@ -149,40 +160,58 @@ export function classifyAlertSource(
   // Massive barrage pattern: Iran launches hit 20+ cities simultaneously
   const isMassiveBarrage = alertCount >= 20;
 
-  // Geography-based classification
-  let hasNorth = false;
-  let hasCentralSouth = false;
+  // Geography-based classification with batch context
+  let northCount = 0;
+  let centralSouthCount = 0;
+  let unknownCount = 0;
 
   for (const city of cities) {
-    // First try the zone database
+    // First try the zone database (1,450+ cities with known districts)
     const zone = findZoneByName(city);
     if (zone) {
       if (zone.district === 'haifa') {
-        hasNorth = true;
-        hasCentralSouth = true;
+        northCount++;
+        centralSouthCount++;
       } else if (zone.district === 'north') {
-        hasNorth = true;
+        northCount++;
       } else {
-        hasCentralSouth = true;
+        centralSouthCount++;
       }
       continue;
     }
 
     // Fallback: keyword-based region detection for cities NOT in our database.
-    // Many small kibbutzim and communities in the north aren't in zones-generated.
     if (isNorthernCity(city)) {
-      hasNorth = true;
+      northCount++;
     } else if (isHaifaCity(city)) {
-      hasNorth = true;
-      hasCentralSouth = true;
+      northCount++;
+      centralSouthCount++;
     } else {
-      // Default: assume central/south (most of Israel's population)
-      hasCentralSouth = true;
+      // Don't immediately assume central/south — track as unknown for batch context
+      unknownCount++;
     }
   }
 
+  // Batch context: if 70%+ of KNOWN cities are northern,
+  // classify unknown cities as northern too (likely small northern communities)
+  const knownTotal = northCount + centralSouthCount;
+  if (knownTotal > 0 && unknownCount > 0) {
+    const northRatio = northCount / knownTotal;
+    if (northRatio >= 0.7) {
+      northCount += unknownCount;
+    } else {
+      centralSouthCount += unknownCount;
+    }
+  } else if (unknownCount > 0) {
+    // All cities are unknown — default to central/south
+    centralSouthCount += unknownCount;
+  }
+
+  const hasNorth = northCount > 0;
+  const hasCentralSouth = centralSouthCount > 0;
+
   // Massive barrage hitting central/south = Iran
-  if (isMassiveBarrage && hasCentralSouth) return 'iran';
+  if (isMassiveBarrage && hasCentralSouth && centralSouthCount > northCount) return 'iran';
 
   if (hasNorth && hasCentralSouth) return 'dual';
   if (hasNorth) return 'hezbollah';

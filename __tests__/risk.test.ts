@@ -246,23 +246,27 @@ describe('calculateNapRiskWeighted', () => {
 });
 
 describe('getTimeOfDayMultiplier', () => {
-  it('returns higher value for late night (1-5)', () => {
-    expect(getTimeOfDayMultiplier(3)).toBe(1.3);
+  it('returns highest for dawn/early morning (5-8)', () => {
+    expect(getTimeOfDayMultiplier(6)).toBe(1.5);
   });
 
-  it('returns lower value for midday (9-15)', () => {
-    expect(getTimeOfDayMultiplier(12)).toBe(0.8);
+  it('returns low for afternoon (12-17)', () => {
+    expect(getTimeOfDayMultiplier(14)).toBe(0.5);
   });
 
-  it('returns normal for afternoon (16-19)', () => {
-    expect(getTimeOfDayMultiplier(17)).toBe(1.0);
+  it('returns lowest for late afternoon (17-20)', () => {
+    expect(getTimeOfDayMultiplier(18)).toBe(0.3);
   });
 
-  it('returns elevated for evening (20+)', () => {
-    expect(getTimeOfDayMultiplier(22)).toBe(1.2);
+  it('returns elevated for evening (20-23)', () => {
+    expect(getTimeOfDayMultiplier(21)).toBe(1.3);
   });
 
-  it('returns 1.0 for midnight (hour 0)', () => {
-    expect(getTimeOfDayMultiplier(0)).toBe(1.0);
+  it('returns moderate for late night (23-2)', () => {
+    expect(getTimeOfDayMultiplier(0)).toBe(1.1);
+  });
+
+  it('returns normal for deep night (2-5)', () => {
+    expect(getTimeOfDayMultiplier(3)).toBe(1.0);
   });
 });

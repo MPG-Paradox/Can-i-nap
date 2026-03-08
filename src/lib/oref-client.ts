@@ -40,6 +40,7 @@ export async function fetchActiveAlert(): Promise<OrefRealTimeResponse | null> {
   }
 }
 
+// Old 24h endpoint — kept as fallback but usually returns 403
 export async function fetchAlertHistory(): Promise<OrefHistoryItem[]> {
   try {
     const response = await fetch(
@@ -52,7 +53,6 @@ export async function fetchAlertHistory(): Promise<OrefHistoryItem[]> {
 
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
-      // API returned HTML (block page, error page, etc.) — not JSON
       return [];
     }
 
@@ -63,11 +63,28 @@ export async function fetchAlertHistory(): Promise<OrefHistoryItem[]> {
 
     const firstChar = text.trim()[0];
     if (firstChar !== '[' && firstChar !== '{') {
-      return []; // Not JSON — probably HTML error page
+      return [];
     }
 
     return JSON.parse(text);
   } catch {
-    return []; // Silently fail — API unavailable is normal
+    return [];
+  }
+}
+
+// Working archive endpoint — fetches full war history
+export async function fetchArchiveAlerts(fromDate: string, toDate: string): Promise<unknown[]> {
+  try {
+    const url = `https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${fromDate}&toDate=${toDate}`;
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(15000), // Slow endpoint
+    });
+
+    const text = await response.text();
+    if (!text || text.trim()[0] !== '[') return [];
+
+    return JSON.parse(text);
+  } catch {
+    return [];
   }
 }

@@ -10,13 +10,18 @@ export const DEFAULT_WEIGHTS: RiskWeights = {
   timeOfDay: 10,
 };
 
+// Based on actual alert data from Feb 28 - Mar 8, 2026:
+// Peak: 05:00-08:00 (357 alerts at 07:00), 20:00-22:00 (452 combined)
+// Quiet: 17:00-20:00 (0 alerts)
 export function getTimeOfDayMultiplier(hour: number): number {
-  if (hour >= 1 && hour <= 5) return 1.3;
-  if (hour >= 6 && hour <= 8) return 1.1;
-  if (hour >= 9 && hour <= 15) return 0.8;
-  if (hour >= 16 && hour <= 19) return 1.0;
-  if (hour >= 20) return 1.2;
-  return 1.0; // hour 0 (midnight)
+  if (hour >= 5 && hour < 8) return 1.5;    // Dawn/early morning — HIGHEST risk
+  if (hour >= 20 && hour < 23) return 1.3;   // Evening — high
+  if (hour >= 23 || hour < 2) return 1.1;    // Late night — moderate
+  if (hour >= 2 && hour < 5) return 1.0;     // Deep night — normal
+  if (hour >= 8 && hour < 12) return 0.7;    // Morning — lower
+  if (hour >= 12 && hour < 17) return 0.5;   // Afternoon — lowest
+  if (hour >= 17 && hour < 20) return 0.3;   // Late afternoon — QUIETEST
+  return 1.0;
 }
 
 function matchesZone(alert: Alert, zoneId: string, isNational: boolean): boolean {
@@ -89,17 +94,21 @@ function computeRawFactors(input: RiskInput) {
     windowAlerts = zoneAlerts;
   }
 
+  // Weighted average interval: recent intervals matter more than old ones
   let avgIntervalMinutes: number;
   if (windowAlerts.length >= 2) {
     const sorted = [...windowAlerts].sort(
-      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+      (a, b) => b.timestamp.getTime() - a.timestamp.getTime() // Newest first
     );
-    let totalInterval = 0;
-    for (let i = 1; i < sorted.length; i++) {
-      totalInterval +=
-        sorted[i].timestamp.getTime() - sorted[i - 1].timestamp.getTime();
+    let weightedSum = 0;
+    let weightTotal = 0;
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const interval = (sorted[i].timestamp.getTime() - sorted[i + 1].timestamp.getTime()) / 60000;
+      const weight = 1 / (i + 1); // 1, 0.5, 0.33, 0.25...
+      weightedSum += interval * weight;
+      weightTotal += weight;
     }
-    avgIntervalMinutes = totalInterval / ((sorted.length - 1) * 60 * 1000);
+    avgIntervalMinutes = weightedSum / weightTotal;
   } else {
     avgIntervalMinutes = 720;
   }
@@ -171,7 +180,7 @@ export function calculateNapRiskWeighted(
   const trendModuleRisk = Math.max(0, Math.min(1, (raw.trendMultiplier - 0.6) / (1.4 - 0.6)));
   const recencyModuleRisk = Math.max(0, Math.min(1, (raw.recencyMultiplier - 0.5) / (2.0 - 0.5)));
   const dualFrontModuleRisk = Math.max(0, Math.min(1, (raw.dualFrontMultiplier - 1.0) / (2.5 - 1.0)));
-  const timeOfDayModuleRisk = Math.max(0, Math.min(1, (raw.timeOfDayMultiplier - 0.8) / (1.3 - 0.8)));
+  const timeOfDayModuleRisk = Math.max(0, Math.min(1, (raw.timeOfDayMultiplier - 0.3) / (1.5 - 0.3)));
 
   const weightedRisk =
     coreModuleRisk * w.core +
