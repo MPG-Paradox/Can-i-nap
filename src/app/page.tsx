@@ -125,7 +125,7 @@ function MainApp() {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const res = await fetch('/api/alerts?hours=168');
+      const res = await fetch('/api/alerts?hours=48');
       if (res.ok) {
         const data: StoredAlert[] = await res.json();
         const newJson = JSON.stringify(data);
@@ -152,28 +152,34 @@ function MainApp() {
     // Step 1: Load cached alerts immediately (local store — fast)
     fetchAlerts();
 
-    // Step 2: Background archive fetch (slow but gets fresh data)
-    fetch('/api/fetch-history').then(() => {
-      // Refresh local store after archive sync
-      fetchAlerts();
-    }).catch(() => {});
+    // Step 2: Background archive fetch — only re-read store if new data arrived
+    fetch('/api/fetch-history')
+      .then((r) => r.json())
+      .then((d) => { if (d.newAlerts > 0) fetchAlerts(); })
+      .catch(() => {});
 
-    // Step 3: Poll real-time every 30s, refresh local store every 30s
+    // Step 3: Poll real-time every 30s + refresh store
     const pollId = setInterval(async () => {
       try {
         const res = await fetch('/api/poll');
         const data = await res.json();
         if (data.newAlerts > 0) {
-          // New alert detected — immediately sync history for full picture
-          fetch('/api/fetch-history').catch(() => {});
+          // New alert — sync history for full picture, then refresh
+          fetch('/api/fetch-history')
+            .then((r) => r.json())
+            .then((d) => { if (d.newAlerts > 0) fetchAlerts(); })
+            .catch(() => {});
         }
       } catch {}
       fetchAlerts();
     }, 30_000);
 
-    // Step 4: Re-sync history every 5 minutes
+    // Step 4: Re-sync history every 5 minutes — only refresh if new data
     const historyId = setInterval(() => {
-      fetch('/api/fetch-history').then(() => fetchAlerts()).catch(() => {});
+      fetch('/api/fetch-history')
+        .then((r) => r.json())
+        .then((d) => { if (d.newAlerts > 0) fetchAlerts(); })
+        .catch(() => {});
     }, 300_000);
 
     return () => {
