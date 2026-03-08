@@ -32,17 +32,18 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value))}
           className="nap-slider w-full"
+          dir="ltr"
           style={{
             background: `linear-gradient(to right, #f59e0b ${fillPercent}%, #1e1e1e ${fillPercent}%)`,
           }}
         />
-        <div className="flex justify-between mt-1">
+        <div className="flex justify-between mt-1" dir="ltr">
           <span className="text-xs text-slate-600">10</span>
           <span className="text-xs text-slate-600">120</span>
         </div>
       </div>
 
-      <div className="flex gap-2 justify-center mt-4">
+      <div className="flex gap-2 justify-center mt-4" dir="ltr">
         {PRESETS.map((preset) => (
           <button
             key={preset}

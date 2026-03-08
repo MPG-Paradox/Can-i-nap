@@ -290,13 +290,12 @@ function MainApp() {
   const graphTime = useMemo(() => new Date(), [graphRecalcKey, debouncedDuration, zoneName, weights]);
 
   const lastUpdateTime = useMemo(() => {
-    if (alerts.length === 0) return '--:--:--';
-    const d = alerts[0].timestamp;
-    const h = d.getHours().toString().padStart(2, '0');
-    const m = d.getMinutes().toString().padStart(2, '0');
-    const s = d.getSeconds().toString().padStart(2, '0');
+    if (!lastFetchTime) return '--:--:--';
+    const h = lastFetchTime.getHours().toString().padStart(2, '0');
+    const m = lastFetchTime.getMinutes().toString().padStart(2, '0');
+    const s = lastFetchTime.getSeconds().toString().padStart(2, '0');
     return `${h}:${m}:${s}`;
-  }, [alerts]);
+  }, [lastFetchTime]);
 
   const displayName = zone
     ? language === 'en' ? zone.englishName : zone.hebrewName
