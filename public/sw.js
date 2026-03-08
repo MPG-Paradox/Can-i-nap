@@ -1,9 +1,10 @@
-const CACHE_NAME = 'caninap-v1';
-const STATIC_ASSETS = ['/', '/manifest.json', '/icon.svg'];
+const CACHE_NAME = 'caninap-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(['/manifest.json', '/icon.svg'])
+    )
   );
   self.skipWaiting();
 });
@@ -24,15 +25,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Network-first for API routes
-  if (url.pathname.startsWith('/api/')) {
+  // Network-first for API routes and HTML navigation requests
+  if (
+    url.pathname.startsWith('/api/') ||
+    event.request.mode === 'navigate' ||
+    event.request.headers.get('accept')?.includes('text/html')
+  ) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for static assets only (JS chunks, CSS, images, fonts)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

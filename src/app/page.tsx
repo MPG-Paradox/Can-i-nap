@@ -20,7 +20,10 @@ import ActiveThreatOverlay from '@/components/ActiveThreatOverlay';
 import ShareButton from '@/components/ShareButton';
 
 const AnimatedBackground = dynamic(
-  () => import('@/components/ui/AnimatedBackground'),
+  () => import('@/components/ui/AnimatedBackground').catch(() => {
+    // If the shader fails to load, return a no-op component
+    return { default: () => null };
+  }),
   { ssr: false }
 );
 
@@ -264,10 +267,19 @@ function MainApp() {
     if (input) setTimeout(() => input.focus(), 300);
   };
 
-  // Register service worker
+  // Register service worker + clear stale caches
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Force update check to pick up new SW version
+        reg.update().catch(() => {});
+      }).catch(() => {});
+    }
+    // Clear stale caches from old SW versions
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.filter((k) => k !== 'caninap-v2').forEach((k) => caches.delete(k));
+      }).catch(() => {});
     }
   }, []);
 
@@ -390,7 +402,12 @@ function MainApp() {
               </div>
             </footer>
           </>
-        ) : null}
+        ) : (
+          <div className="mt-12 text-center stagger-2">
+            <RiskDial riskPercent={0} />
+            <p className="mt-4 text-sm text-slate-400">{t.noAlerts}</p>
+          </div>
+        )}
       </main>
     </>
   );
