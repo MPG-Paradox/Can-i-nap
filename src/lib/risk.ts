@@ -252,7 +252,7 @@ export function findOptimalWindow(
   let bestStart = currentTime;
   let bestOffset = 0;
 
-  for (let offsetMinutes = 0; offsetMinutes < 24 * 60; offsetMinutes += 15) {
+  for (let offsetMinutes = 0; offsetMinutes < 24 * 60; offsetMinutes += 60) {
     const candidateStart = new Date(
       currentTime.getTime() + offsetMinutes * 60 * 1000
     );

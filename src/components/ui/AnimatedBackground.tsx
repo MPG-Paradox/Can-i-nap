@@ -121,7 +121,7 @@ const AnimatedBackground = memo(() => {
 
       let frameId: number;
       let lastTime = 0;
-      const frameInterval = 1000 / 30; // 30fps cap
+      const frameInterval = 1000 / 15; // 15fps cap — saves GPU during interactions
 
       const animate = (time: number) => {
         frameId = requestAnimationFrame(animate);

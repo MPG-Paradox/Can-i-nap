@@ -15,7 +15,6 @@ import ConnectionStatus from '@/components/ConnectionStatus';
 import DurationButtons from '@/components/DurationButtons';
 import InlineLocationPicker from '@/components/InlineLocationPicker';
 import StatsCards from '@/components/StatsCards';
-import DualFrontCard from '@/components/DualFrontCard';
 import ActiveThreatOverlay from '@/components/ActiveThreatOverlay';
 import ShareButton from '@/components/ShareButton';
 
@@ -40,7 +39,6 @@ const CalculationPanel = dynamic(() => import('@/components/CalculationPanel'), 
 // Memoize components that don't depend on tickTime
 const MemoizedRiskDial = memo(RiskDial);
 const MemoizedDurationButtons = memo(DurationButtons);
-const MemoizedDualFrontCard = memo(DualFrontCard);
 const MemoizedInlineLocationPicker = memo(InlineLocationPicker);
 
 function toAlert(stored: StoredAlert): Alert {
@@ -87,6 +85,8 @@ function MainApp() {
   const isNational = !!(zone && zone.isNational);
 
   const [napDuration, setNapDuration] = useState(45);
+  const [debouncedDuration, setDebouncedDuration] = useState(45);
+  const debounceRef = useRef<NodeJS.Timeout>();
   const [weights, setWeights] = useState<RiskWeights>({ ...DEFAULT_WEIGHTS });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'offline'>('connected');
@@ -181,6 +181,12 @@ function MainApp() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Debounce duration for expensive graph/timeline calculations
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setDebouncedDuration(napDuration), 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [napDuration]);
+
   // Tick timer (1s) for StatsCards + staleness
   // Calc timer (30s) for main risk dial
   useEffect(() => {
@@ -272,8 +278,18 @@ function MainApp() {
   }, [zone, napDuration, alerts, calcTime, weights]);
 
   // Graph time — only update when data/zone/duration/weights change, not every 30s
+  // Uses debouncedDuration so graph doesn't recalculate while dragging slider
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const graphTime = useMemo(() => new Date(), [graphRecalcKey, napDuration, zoneName, weights]);
+  const graphTime = useMemo(() => new Date(), [graphRecalcKey, debouncedDuration, zoneName, weights]);
+
+  const lastUpdateTime = useMemo(() => {
+    if (alerts.length === 0) return '--:--:--';
+    const d = alerts[0].timestamp;
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const s = d.getSeconds().toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }, [alerts]);
 
   const displayName = zone
     ? language === 'en' ? zone.englishName : zone.hebrewName
@@ -368,20 +384,11 @@ function MainApp() {
               <StatsCards risk={risk} tickTime={tickTime} />
             </div>
 
-            <div className="w-full mt-6 stagger-5">
-              <MemoizedDualFrontCard
-                status={risk.dualFrontStatus}
-                alerts={alerts}
-                zoneId={zone!.hebrewName}
-                isNational={isNational}
-              />
-            </div>
-
             {graphReady && (
               <div className="w-full mt-6 stagger-6">
                 <SafeNapGraph
                   zoneId={zone!.hebrewName}
-                  napDuration={napDuration}
+                  napDuration={debouncedDuration}
                   alerts={alerts}
                   currentTime={graphTime}
                   weights={weights}
@@ -400,24 +407,34 @@ function MainApp() {
 
             <footer className="w-full mt-10 stagger-7">
               <div className="glass-card rounded-2xl p-5 text-center space-y-3">
-                <div className="flex items-center justify-center gap-3">
-                  <ShareButton
-                    riskPercent={risk.riskPercent}
-                    napDuration={napDuration}
-                    zoneName={displayName}
-                  />
-                </div>
-                <p className="text-xs text-slate-500">{t.notOfficialDisclaimer}</p>
+                <ShareButton
+                  riskPercent={risk.riskPercent}
+                  napDuration={napDuration}
+                  zoneName={displayName}
+                />
                 <p className="text-xs text-slate-500">{t.disclaimer}</p>
+                <p className="text-xs text-slate-400">
+                  {t.dataSource}:{' '}
+                  <a
+                    href="https://www.oref.org.il/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-amber-400/60 hover:text-amber-400 underline underline-offset-2 transition-colors"
+                  >
+                    {t.pikudHaoref}
+                  </a>
+                </p>
+                <p className="text-xs text-slate-400">
+                  {t.lastUpdated}: {lastUpdateTime}
+                </p>
                 <a
-                  href="https://www.oref.org.il/en/12481-en/Pakar.aspx"
+                  href="https://www.linkedin.com/in/emil-el-asmar-59a4a629a/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block text-xs text-slate-500 hover:text-amber-400 underline underline-offset-2 transition-colors"
+                  className="inline-block text-xs text-amber-400/60 hover:text-amber-400 underline underline-offset-2 transition-colors"
                 >
-                  {t.officialApp}
+                  Emil El Asmar — LinkedIn
                 </a>
-                <p className="text-[11px] text-slate-600">{t.madeIn}</p>
               </div>
             </footer>
           </>
