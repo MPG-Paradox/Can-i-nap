@@ -22,13 +22,15 @@
     "pikud-haoref-api": "^5.0.0",
     "react": "^18",
     "react-dom": "^18",
-    "recharts": "^3.8.0"
+    "recharts": "^3.8.0",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/jest": "^29",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/three": "^0.183.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "jest": "^29",

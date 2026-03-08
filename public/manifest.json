@@ -1,0 +1,18 @@
+{
+  "name": "Can I Nap? | \u05d0\u05e4\u05e9\u05e8 \u05dc\u05e0\u05de\u05e0\u05dd?",
+  "short_name": "Can I Nap?",
+  "description": "Real-time nap risk assessment during the Iran-Israel war",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

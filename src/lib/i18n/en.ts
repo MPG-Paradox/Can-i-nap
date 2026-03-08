@@ -97,4 +97,7 @@ export const en = {
   yourZone: 'Your zone',
   national: 'national',
   almostCertain: 'Almost certain interruption',
+  copied: 'Copied!',
+  madeIn: 'Made with coffee in Ashdod',
+  notOfficialDisclaimer: 'This is NOT an official Home Front Command application.',
 };

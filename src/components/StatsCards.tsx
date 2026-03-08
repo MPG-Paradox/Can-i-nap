@@ -62,7 +62,7 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-3">
       {/* Time since last */}
-      <div className="bg-surface-card rounded-xl p-4">
+      <div className="glass-card rounded-xl p-4">
         <p className="text-xs text-slate-400 uppercase tracking-wide">{t.timeSinceLast}</p>
         <p className={`text-2xl font-bold mt-1 tabular-nums ${getTimeSinceColor(baseSeconds / 60)}`}>
           {baseSeconds < 0 ? t.noAlertsEver : formatTimeSince(baseSeconds, t)}
@@ -70,7 +70,7 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
       </div>
 
       {/* Average interval */}
-      <div className="bg-surface-card rounded-xl p-4">
+      <div className="glass-card rounded-xl p-4">
         <p className="text-xs text-slate-400 uppercase tracking-wide">{t.avgInterval}</p>
         <p className={`text-2xl font-bold mt-1 ${risk.avgIntervalMinutes >= 720 ? 'text-risk-green' : 'text-slate-100'}`}>
           {avgDisplay}
@@ -78,7 +78,7 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
       </div>
 
       {/* 24h alert count */}
-      <div className="bg-surface-card rounded-xl p-4">
+      <div className="glass-card rounded-xl p-4">
         <p className="text-xs text-slate-400 uppercase tracking-wide">{t.alertCount24h}</p>
         <p className={`text-2xl font-bold mt-1 ${getVolumeColor(risk.volume24h)}`}>
           {risk.volume24h}
@@ -86,7 +86,7 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
       </div>
 
       {/* Trend */}
-      <div className="bg-surface-card rounded-xl p-4">
+      <div className="glass-card rounded-xl p-4">
         <p className="text-xs text-slate-400 uppercase tracking-wide">{t.trend}</p>
         <p className={`text-2xl font-bold mt-1 ${trendInfo.color}`}>
           <span className="me-1">{trendInfo.arrow}</span>

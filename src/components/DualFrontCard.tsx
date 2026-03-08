@@ -61,7 +61,7 @@ export default function DualFrontCard({ status, alerts, zoneId, isNational }: Du
   const zoneHezbollahCount = showZone ? countZoneAlerts(alerts, zoneId, 'hezbollah', 6) : 0;
 
   return (
-    <div className="bg-surface-card rounded-2xl p-5">
+    <div className="glass-card rounded-2xl p-5">
       {/* Status badge with time window label */}
       <div className="mb-4 flex items-center gap-2">
         <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${badge.className}`}>

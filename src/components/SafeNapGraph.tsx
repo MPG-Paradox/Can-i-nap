@@ -93,7 +93,7 @@ export default function SafeNapGraph({
   }, [alerts, currentTime]);
 
   return (
-    <div className="bg-surface-card rounded-2xl p-5">
+    <div className="glass-card rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs uppercase tracking-wide text-slate-400">{t.whenSafest}</p>
         {onRefresh && (

@@ -75,7 +75,7 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
             onChange={(e) => setCustomValue(e.target.value)}
             onBlur={handleCustomConfirm}
             onKeyDown={(e) => e.key === 'Enter' && handleCustomConfirm()}
-            className="w-16 text-center bg-surface-card border border-slate-600 rounded-lg px-2 py-1.5 text-slate-200 text-sm outline-none focus:border-indigo-500"
+            className="w-16 text-center glass-card rounded-lg px-2 py-1.5 text-slate-200 text-sm outline-none focus:border-indigo-500"
           />
           <button
             onClick={() => {

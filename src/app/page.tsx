@@ -17,14 +17,20 @@ import InlineLocationPicker from '@/components/InlineLocationPicker';
 import StatsCards from '@/components/StatsCards';
 import DualFrontCard from '@/components/DualFrontCard';
 import ActiveThreatOverlay from '@/components/ActiveThreatOverlay';
+import ShareButton from '@/components/ShareButton';
+
+const AnimatedBackground = dynamic(
+  () => import('@/components/ui/AnimatedBackground'),
+  { ssr: false }
+);
 
 const SafeNapGraph = dynamic(() => import('@/components/SafeNapGraph'), {
-  loading: () => <div className="h-[300px] bg-surface-card rounded-2xl animate-pulse" />,
+  loading: () => <div className="h-[300px] glass-card rounded-2xl skeleton" />,
   ssr: false,
 });
 
 const CalculationPanel = dynamic(() => import('@/components/CalculationPanel'), {
-  loading: () => <div className="h-[200px] bg-surface-card rounded-2xl animate-pulse" />,
+  loading: () => <div className="h-[200px] glass-card rounded-2xl skeleton" />,
   ssr: false,
 });
 
@@ -33,6 +39,32 @@ function toAlert(stored: StoredAlert): Alert {
 }
 
 const NATIONAL_ZONE = '\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC';
+
+function LoadingSkeleton() {
+  return (
+    <div className="w-full space-y-6 mt-8">
+      {/* Dial placeholder */}
+      <div className="flex justify-center">
+        <div className="w-[240px] h-[240px] rounded-full skeleton" />
+      </div>
+      {/* Message placeholder */}
+      <div className="h-6 w-48 mx-auto rounded-lg skeleton" />
+      {/* Duration buttons */}
+      <div className="flex gap-2 justify-center">
+        <div className="h-10 w-20 rounded-full skeleton" />
+        <div className="h-10 w-20 rounded-full skeleton" />
+        <div className="h-10 w-20 rounded-full skeleton" />
+      </div>
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="h-20 rounded-xl skeleton" />
+        <div className="h-20 rounded-xl skeleton" />
+        <div className="h-20 rounded-xl skeleton" />
+        <div className="h-20 rounded-xl skeleton" />
+      </div>
+    </div>
+  );
+}
 
 function MainApp() {
   const searchParams = useSearchParams();
@@ -57,6 +89,9 @@ function MainApp() {
   const [calcTime, setCalcTime] = useState(new Date());
   const lastFetchRef = useRef(Date.now());
   const prevAlertsRef = useRef('');
+
+  // Graph recalc key — only recalculate expensive timeline when data actually changes
+  const [graphRecalcKey, setGraphRecalcKey] = useState(0);
 
   // Active threat overlay state
   const [activeOverlay, setActiveOverlay] = useState<{
@@ -85,6 +120,7 @@ function MainApp() {
         if (newJson !== prevAlertsRef.current) {
           prevAlertsRef.current = newJson;
           setAlerts(data.map(toAlert));
+          setGraphRecalcKey(k => k + 1);
         }
         setConnectionStatus('connected');
         setLastFetchTime(new Date());
@@ -99,15 +135,25 @@ function MainApp() {
     }
   }, []);
 
-  // Fetch alerts every 30s
+  // Startup: fetch history once, initial poll, then periodic fetch + poll
   useEffect(() => {
+    fetch('/api/fetch-history').catch(() => {});
+    fetch('/api/poll').catch(() => {});
     fetchAlerts();
-    const id = setInterval(fetchAlerts, 30000);
-    return () => clearInterval(id);
+
+    // Poll Oref every 5s, fetch our store every 30s
+    let pollCount = 0;
+    const pollId = setInterval(() => {
+      fetch('/api/poll').catch(() => {});
+      pollCount++;
+      if (pollCount % 6 === 0) fetchAlerts();
+    }, 5000);
+
+    return () => clearInterval(pollId);
   }, [fetchAlerts]);
 
-  // Tick timer (1s) for StatsCards counter + staleness detection
-  // Calc timer (30s) for expensive risk/graph recalculations
+  // Tick timer (1s) for StatsCards + staleness
+  // Calc timer (30s) for main risk dial
   useEffect(() => {
     const tickId = setInterval(() => {
       setTickTime(new Date());
@@ -120,18 +166,6 @@ function MainApp() {
       clearInterval(tickId);
       clearInterval(calcId);
     };
-  }, []);
-
-  // On startup: fetch history once, then poll every 5 seconds
-  useEffect(() => {
-    // One-time history fetch to fill gaps on app startup
-    fetch('/api/fetch-history').catch(() => {});
-    // Trigger the poller immediately, then every 5 seconds
-    fetch('/api/poll').catch(() => {});
-    const pollId = setInterval(async () => {
-      try { await fetch('/api/poll'); } catch { /* silently fail */ }
-    }, 5000);
-    return () => clearInterval(pollId);
   }, []);
 
   // SSE: handle new alerts in real-time
@@ -180,6 +214,7 @@ function MainApp() {
       return [parsed, ...prev].slice(0, 500);
     });
     setCalcTime(new Date());
+    setGraphRecalcKey(k => k + 1);
     checkAlertForOverlay(alert);
   }, [checkAlertForOverlay]);
 
@@ -193,7 +228,7 @@ function MainApp() {
     return () => clearTimeout(timer);
   }, [activeOverlay]);
 
-  // Risk calculation uses calcTime (30s), not tickTime (1s)
+  // Risk calculation uses calcTime (30s) — single calc, cheap
   const risk = useMemo(() => {
     if (!zone) return null;
     return calculateNapRiskWeighted(
@@ -206,6 +241,10 @@ function MainApp() {
       weights
     );
   }, [zone, napDuration, alerts, calcTime, weights]);
+
+  // Graph time — only update when data/zone/duration/weights change, not every 30s
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const graphTime = useMemo(() => new Date(), [graphRecalcKey, napDuration, zoneName, weights]);
 
   const newestAlertTime = useMemo(() => {
     if (alerts.length === 0) return null;
@@ -225,8 +264,16 @@ function MainApp() {
     if (input) setTimeout(() => input.focus(), 300);
   };
 
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   return (
     <>
+      <AnimatedBackground />
       <LanguageToggle />
 
       {activeOverlay && (
@@ -238,64 +285,61 @@ function MainApp() {
         />
       )}
 
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-3xl" />
-      </div>
-
       <main className="relative z-10 flex flex-col items-center min-h-screen px-4 pt-6 pb-12 max-w-lg mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold text-center">
-          <span className="inline-block me-2">{'\uD83D\uDE34'}</span>
-          {t.appName}
-        </h1>
-        <p className="mt-2 text-sm text-slate-400 text-center">{t.realTimeAssessment}</p>
-        <div className="mt-1">
-          <ConnectionStatus
-            status={connectionStatus}
-            lastFetchTime={lastFetchTime}
-            alertCount={alerts.length}
-            newestAlertTime={newestAlertTime}
-          />
+        <div className="stagger-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center">
+            <span className="inline-block me-2">{'\uD83D\uDE34'}</span>
+            {t.appName}
+          </h1>
+          <p className="mt-2 text-sm text-slate-400 text-center">{t.realTimeAssessment}</p>
+          <div className="mt-1">
+            <ConnectionStatus
+              status={connectionStatus}
+              lastFetchTime={lastFetchTime}
+              alertCount={alerts.length}
+              newestAlertTime={newestAlertTime}
+            />
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex-1 flex items-center justify-center mt-20">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <LoadingSkeleton />
         ) : risk ? (
           <>
-            <div className="mt-8">
+            <div className="mt-8 stagger-2">
               <RiskDial riskPercent={risk.riskPercent} />
             </div>
 
-            <RiskMessage riskPercent={risk.riskPercent} />
-
-            <p className="mt-2 text-sm text-slate-400 text-center">{displayName}</p>
+            <div className="stagger-2">
+              <RiskMessage riskPercent={risk.riskPercent} />
+              <p className="mt-2 text-sm text-slate-400 text-center">{displayName}</p>
+            </div>
 
             {isNational && (
               <button
                 onClick={scrollToLocation}
-                className="mt-4 w-full bg-surface-card rounded-xl border-s-4 border-indigo-500 px-4 py-3 text-start text-sm text-slate-300 hover:bg-slate-800/50 transition-colors"
+                className="mt-4 w-full glass-card rounded-xl border-s-4 border-indigo-500 px-4 py-3 text-start text-sm text-slate-300 hover:bg-slate-800/50 transition-colors stagger-3"
               >
                 {'\uD83D\uDCCD'} {t.improveAccuracy}
               </button>
             )}
 
-            <div className="w-full mt-8">
+            <div className="w-full mt-8 stagger-3">
               <DurationButtons value={napDuration} onChange={setNapDuration} />
             </div>
 
-            <div className="w-full mt-6" ref={locationRef}>
+            <div className="w-full mt-6 stagger-4" ref={locationRef}>
               <InlineLocationPicker
                 currentZone={zoneName}
                 onZoneChange={handleZoneChange}
               />
             </div>
 
-            <div className="w-full mt-6">
+            <div className="w-full mt-6 stagger-5">
               <StatsCards risk={risk} tickTime={tickTime} />
             </div>
 
-            <div className="w-full mt-6">
+            <div className="w-full mt-6 stagger-5">
               <DualFrontCard
                 status={risk.dualFrontStatus}
                 alerts={alerts}
@@ -304,18 +348,18 @@ function MainApp() {
               />
             </div>
 
-            <div className="w-full mt-6">
+            <div className="w-full mt-6 stagger-6">
               <SafeNapGraph
                 zoneId={zone!.hebrewName}
                 napDuration={napDuration}
                 alerts={alerts}
-                currentTime={calcTime}
+                currentTime={graphTime}
                 weights={weights}
                 onRefresh={fetchAlerts}
               />
             </div>
 
-            <div className="w-full mt-6">
+            <div className="w-full mt-6 stagger-7">
               <CalculationPanel
                 risk={risk}
                 weights={weights}
@@ -323,16 +367,27 @@ function MainApp() {
               />
             </div>
 
-            <footer className="mt-8 text-center">
-              <p className="text-xs text-slate-500">{t.disclaimer}</p>
-              <a
-                href="https://www.oref.org.il/en/12481-en/Pakar.aspx"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-slate-500 hover:text-indigo-400 underline underline-offset-2 transition-colors"
-              >
-                {t.officialApp}
-              </a>
+            <footer className="w-full mt-10 stagger-7">
+              <div className="glass-card rounded-2xl p-5 text-center space-y-3">
+                <div className="flex items-center justify-center gap-3">
+                  <ShareButton
+                    riskPercent={risk.riskPercent}
+                    napDuration={napDuration}
+                    zoneName={displayName}
+                  />
+                </div>
+                <p className="text-xs text-slate-500">{t.notOfficialDisclaimer}</p>
+                <p className="text-xs text-slate-500">{t.disclaimer}</p>
+                <a
+                  href="https://www.oref.org.il/en/12481-en/Pakar.aspx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-xs text-slate-500 hover:text-indigo-400 underline underline-offset-2 transition-colors"
+                >
+                  {t.officialApp}
+                </a>
+                <p className="text-[11px] text-slate-600">{t.madeIn}</p>
+              </div>
             </footer>
           </>
         ) : null}

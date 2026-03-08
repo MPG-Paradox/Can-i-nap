@@ -14,6 +14,13 @@ function getRiskColor(risk: number): string {
   return '#dc2626';
 }
 
+function getGlowClass(risk: number): string {
+  if (risk <= 20) return 'dial-glow-green';
+  if (risk <= 40) return 'dial-glow-yellow';
+  if (risk <= 60) return 'dial-glow-orange';
+  return 'dial-glow-red';
+}
+
 export default function RiskDial({ riskPercent }: RiskDialProps) {
   const { t } = useLanguage();
   const [displayValue, setDisplayValue] = useState(0);
@@ -51,13 +58,14 @@ export default function RiskDial({ riskPercent }: RiskDialProps) {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (riskPercent / 100) * circumference;
 
+  const glowClass = getGlowClass(riskPercent);
+
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-[240px] h-[240px] sm:w-[280px] sm:h-[280px]">
+      <div className={`relative w-[240px] h-[240px] sm:w-[280px] sm:h-[280px] ${glowClass}`}>
         <svg
           className="w-full h-full -rotate-90"
           viewBox="0 0 224 224"
-          style={{ filter: `drop-shadow(0 0 12px ${color}40)` }}
         >
           <circle
             cx="112"
