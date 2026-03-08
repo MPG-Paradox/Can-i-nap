@@ -275,14 +275,6 @@ function MainApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const graphTime = useMemo(() => new Date(), [graphRecalcKey, napDuration, zoneName, weights]);
 
-  const newestAlertTime = useMemo(() => {
-    if (alerts.length === 0) return null;
-    return alerts.reduce((latest, a) =>
-      a.timestamp.getTime() > latest.getTime() ? a.timestamp : latest,
-      alerts[0].timestamp
-    );
-  }, [alerts]);
-
   const displayName = zone
     ? language === 'en' ? zone.englishName : zone.hebrewName
     : '';
@@ -335,7 +327,6 @@ function MainApp() {
               status={connectionStatus}
               lastFetchTime={lastFetchTime}
               alertCount={alerts.length}
-              newestAlertTime={newestAlertTime}
             />
           </div>
         </div>
