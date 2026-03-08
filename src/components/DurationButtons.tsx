@@ -34,8 +34,8 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
             onClick={() => { onChange(presetVal); setShowCustom(false); }}
             className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-150 ${
               value === presetVal
-                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                : 'border border-slate-600 text-slate-300 hover:border-indigo-400'
+                ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25'
+                : 'border border-slate-600 text-slate-300 hover:border-amber-400'
             }`}
           >
             {presetVal} {t.minutesShort}
@@ -45,10 +45,10 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
           onClick={() => setShowCustom(!showCustom)}
           className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-150 ${
             !isPreset && !showCustom
-              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25'
               : showCustom
-                ? 'bg-indigo-500/20 border border-indigo-500 text-indigo-300'
-                : 'border border-slate-600 text-slate-300 hover:border-indigo-400'
+                ? 'bg-amber-500/20 border border-amber-500 text-amber-300'
+                : 'border border-slate-600 text-slate-300 hover:border-amber-400'
           }`}
         >
           {!isPreset && !showCustom ? `${value} ${t.minutesShort}` : t.custom}
@@ -63,7 +63,7 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
               setCustomValue(String(n));
               onChange(n);
             }}
-            className="w-9 h-9 rounded-full border border-slate-600 text-slate-300 hover:border-indigo-400 flex items-center justify-center text-lg"
+            className="w-9 h-9 rounded-full border border-slate-600 text-slate-300 hover:border-amber-400 flex items-center justify-center text-lg"
           >
             -
           </button>
@@ -75,7 +75,7 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
             onChange={(e) => setCustomValue(e.target.value)}
             onBlur={handleCustomConfirm}
             onKeyDown={(e) => e.key === 'Enter' && handleCustomConfirm()}
-            className="w-16 text-center glass-card rounded-lg px-2 py-1.5 text-slate-200 text-sm outline-none focus:border-indigo-500"
+            className="w-16 text-center glass-card rounded-lg px-2 py-1.5 text-slate-200 text-sm outline-none focus:border-amber-500"
           />
           <button
             onClick={() => {
@@ -83,7 +83,7 @@ export default function DurationButtons({ value, onChange }: DurationButtonsProp
               setCustomValue(String(n));
               onChange(n);
             }}
-            className="w-9 h-9 rounded-full border border-slate-600 text-slate-300 hover:border-indigo-400 flex items-center justify-center text-lg"
+            className="w-9 h-9 rounded-full border border-slate-600 text-slate-300 hover:border-amber-400 flex items-center justify-center text-lg"
           >
             +
           </button>

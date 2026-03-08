@@ -99,7 +99,7 @@ export default function SafeNapGraph({
         {onRefresh && (
           <button
             onClick={onRefresh}
-            className="text-slate-400 hover:text-indigo-400 transition-colors text-sm"
+            className="text-slate-400 hover:text-amber-400 transition-colors text-sm"
             title="Refresh"
           >
             {'\u21BB'}
@@ -140,7 +140,7 @@ export default function SafeNapGraph({
             />
             <Tooltip
               contentStyle={{
-                background: '#1e293b',
+                background: '#0a0a0a',
                 border: '1px solid #334155',
                 borderRadius: '8px',
                 color: '#e2e8f0',
@@ -168,12 +168,12 @@ export default function SafeNapGraph({
             {data[nowIndex] && (
               <ReferenceLine
                 x={data[nowIndex].timeLabel}
-                stroke="#818cf8"
+                stroke="#fbbf24"
                 strokeDasharray="4 4"
                 label={{
                   value: t.now,
                   position: 'top',
-                  fill: '#818cf8',
+                  fill: '#fbbf24',
                   fontSize: 11,
                 }}
               />

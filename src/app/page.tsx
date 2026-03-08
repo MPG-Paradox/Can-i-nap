@@ -330,7 +330,7 @@ function MainApp() {
             {isNational && (
               <button
                 onClick={scrollToLocation}
-                className="mt-4 w-full glass-card rounded-xl border-s-4 border-indigo-500 px-4 py-3 text-start text-sm text-slate-300 hover:bg-slate-800/50 transition-colors stagger-3"
+                className="mt-4 w-full glass-card rounded-xl border-s-4 border-amber-500 px-4 py-3 text-start text-sm text-slate-300 hover:bg-slate-800/50 transition-colors stagger-3"
               >
                 {'\uD83D\uDCCD'} {t.improveAccuracy}
               </button>
@@ -394,7 +394,7 @@ function MainApp() {
                   href="https://www.oref.org.il/en/12481-en/Pakar.aspx"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block text-xs text-slate-500 hover:text-indigo-400 underline underline-offset-2 transition-colors"
+                  className="inline-block text-xs text-slate-500 hover:text-amber-400 underline underline-offset-2 transition-colors"
                 >
                   {t.officialApp}
                 </a>
@@ -418,7 +418,7 @@ export default function Home() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >

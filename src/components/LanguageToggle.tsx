@@ -19,7 +19,7 @@ export default function LanguageToggle() {
           onClick={() => setLanguage(code)}
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ease-in-out ${
             language === code
-              ? 'bg-indigo-500 text-white shadow-sm'
+              ? 'bg-amber-500 text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           }`}
           aria-label={`Switch to ${code}`}

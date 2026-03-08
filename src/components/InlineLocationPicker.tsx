@@ -157,7 +157,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
           onClick={handleGeolocate}
           disabled={geoLoading}
           className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
-            geoLoading ? 'opacity-50 cursor-not-allowed border-slate-600 text-slate-400' : 'border-slate-600 text-slate-300 hover:border-indigo-400'
+            geoLoading ? 'opacity-50 cursor-not-allowed border-slate-600 text-slate-400' : 'border-slate-600 text-slate-300 hover:border-amber-400'
           }`}
         >
           {'\uD83D\uDCCD'} {geoLoading ? t.locating : t.useLocation}
@@ -166,8 +166,8 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
           onClick={() => selectZone('\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC')}
           className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
             isNational
-              ? 'bg-indigo-500/20 border-indigo-400 text-indigo-300'
-              : 'border-slate-600 text-slate-300 hover:border-indigo-400'
+              ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+              : 'border-slate-600 text-slate-300 hover:border-amber-400'
           }`}
         >
           {t.allOfIsrael}
@@ -183,8 +183,8 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
               onClick={() => selectZone(chip.hebrewName)}
               className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
                 isActive
-                  ? 'bg-indigo-500/20 border-indigo-400 text-indigo-300'
-                  : 'border-slate-600 text-slate-300 hover:border-indigo-400'
+                  ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                  : 'border-slate-600 text-slate-300 hover:border-amber-400'
               }`}
             >
               {display}
@@ -207,7 +207,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
           onFocus={() => query.trim().length > 0 && setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={t.searchPlaceholder}
-          className="w-full bg-surface text-white text-sm rounded-xl px-4 py-3 border border-slate-700/50 outline-none transition-all duration-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 placeholder:text-slate-500"
+          className="w-full bg-surface text-white text-sm rounded-xl px-4 py-3 border border-slate-700/50 outline-none transition-all duration-200 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 placeholder:text-slate-500"
           autoComplete="off"
         />
 
@@ -225,16 +225,16 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
                   data-zone-item
                   onClick={() => selectZone(zone.hebrewName)}
                   className={`w-full flex items-center justify-between px-4 py-2.5 text-start transition-colors duration-100 first:rounded-t-xl last:rounded-b-xl text-sm ${
-                    i === highlightIndex ? 'bg-indigo-500/20' : 'hover:bg-indigo-500/10'
+                    i === highlightIndex ? 'bg-amber-500/20' : 'hover:bg-amber-500/10'
                   }`}
                 >
                   <span className="text-slate-100 flex items-center gap-2">
-                    {zone.isRegion && <span className="text-indigo-400 text-xs">{'\uD83D\uDCCD'}</span>}
+                    {zone.isRegion && <span className="text-amber-400 text-xs">{'\uD83D\uDCCD'}</span>}
                     {getZoneName(zone, language)}
                   </span>
                   <span className="flex items-center gap-2">
                     {zone.isRegion && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 whitespace-nowrap">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 whitespace-nowrap">
                         {t.region}
                       </span>
                     )}

@@ -13,7 +13,7 @@ interface CalculationPanelProps {
 type FactorKey = 'core' | 'trend' | 'recency' | 'dualFront' | 'timeOfDay';
 
 const FACTOR_COLORS: Record<FactorKey, string> = {
-  core: 'bg-indigo-400',
+  core: 'bg-amber-400',
   trend: 'bg-yellow-400',
   recency: 'bg-green-400',
   dualFront: 'bg-red-400',
@@ -21,7 +21,7 @@ const FACTOR_COLORS: Record<FactorKey, string> = {
 };
 
 const FACTOR_DOT_COLORS: Record<FactorKey, string> = {
-  core: 'text-indigo-400',
+  core: 'text-amber-400',
   trend: 'text-yellow-400',
   recency: 'text-green-400',
   dualFront: 'text-red-400',
@@ -97,7 +97,7 @@ export default function CalculationPanel({ risk, weights, onWeightsChange }: Cal
         <p className="text-xs uppercase tracking-wide text-slate-400">{t.howCalculated}</p>
         <button
           onClick={toggleAll}
-          className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+          className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
         >
           {t.adjustWeights} {allExpanded ? '\u25B2' : '\u25BC'}
         </button>
@@ -158,9 +158,9 @@ export default function CalculationPanel({ risk, weights, onWeightsChange }: Cal
                       max={100}
                       value={weights[key]}
                       onChange={(e) => handleWeightChange(key, Number(e.target.value))}
-                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-indigo-500"
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-amber-500"
                       style={{
-                        background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${weights[key]}%, rgb(51 65 85) ${weights[key]}%, rgb(51 65 85) 100%)`,
+                        background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${weights[key]}%, rgb(51 65 85) ${weights[key]}%, rgb(51 65 85) 100%)`,
                       }}
                     />
                   </div>

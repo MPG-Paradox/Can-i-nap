@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #0f172a;
+  --background: #000000;
   --foreground: #f8fafc;
 }
 
@@ -18,10 +18,10 @@ body {
 
 /* Glass morphism card */
 .glass-card {
-  background: rgba(30, 41, 59, 0.75);
+  background: rgba(10, 10, 10, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.06);
 }
 
 /* Staggered load animation */
@@ -59,9 +59,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(30, 41, 59, 0.75) 25%,
-    rgba(51, 65, 85, 0.5) 50%,
-    rgba(30, 41, 59, 0.75) 75%
+    rgba(10, 10, 10, 0.75) 25%,
+    rgba(30, 30, 30, 0.5) 50%,
+    rgba(10, 10, 10, 0.75) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
