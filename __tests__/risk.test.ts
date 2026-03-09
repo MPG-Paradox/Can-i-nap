@@ -243,6 +243,40 @@ describe('calculateNapRiskWeighted', () => {
     // National mode should see ALL alerts regardless of city
     expect(result.volume24h).toBe(3);
   });
+
+  it('national zone includes ALL 10 alerts from various cities', () => {
+    const cities = [
+      '\u05D0\u05E9\u05D3\u05D5\u05D3', '\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1', '\u05D7\u05D9\u05E4\u05D4',
+      '\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD', '\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2',
+      '\u05E0\u05D4\u05E8\u05D9\u05D4', '\u05E7\u05E8\u05D9\u05D9\u05EA \u05E9\u05DE\u05D5\u05E0\u05D4',
+      '\u05E0\u05EA\u05E0\u05D9\u05D4', '\u05E8\u05DE\u05EA \u05D2\u05DF', '\u05D6\u05E8\u05E2\u05D9\u05EA',
+    ];
+    const alerts = cities.map((city, i) => makeAlert(10 + i * 5, [city]));
+    const result = calculateNapRisk({
+      zoneId: '\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC',
+      napDurationMinutes: 30,
+      alerts,
+      currentTime: now,
+    });
+    expect(result.volume24h).toBe(10);
+    expect(result.timeSinceLastMinutes).toBeGreaterThanOrEqual(0);
+    expect(result.timeSinceLastMinutes).not.toBe(-1);
+  });
+
+  it('national zone timeSinceLastMinutes is finite and non-negative', () => {
+    const alerts = [
+      makeAlert(60, ['\u05D6\u05E8\u05E2\u05D9\u05EA']),
+      makeAlert(120, ['\u05E0\u05D4\u05E8\u05D9\u05D4']),
+    ];
+    const result = calculateNapRisk({
+      zoneId: '\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC',
+      napDurationMinutes: 30,
+      alerts,
+      currentTime: now,
+    });
+    expect(Number.isFinite(result.timeSinceLastMinutes)).toBe(true);
+    expect(result.timeSinceLastMinutes).toBeGreaterThanOrEqual(0);
+  });
 });
 
 describe('getTimeOfDayMultiplier', () => {

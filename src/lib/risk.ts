@@ -70,13 +70,19 @@ function computeRawFactors(input: RiskInput) {
   );
 
   const targetZone = findZoneByName(zoneId);
-  // Direct string fallback in case findZoneByName fails to resolve the national zone
+  // Bulletproof national detection: zone object flag + direct string matching
   const isNational = !!(targetZone && targetZone.isNational) ||
-    zoneId === '\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC' || zoneId === 'All of Israel';
+    zoneId === '\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC' ||
+    zoneId.includes('\u05D9\u05E9\u05E8\u05D0\u05DC') ||
+    zoneId.toLowerCase().includes('israel') ||
+    zoneId === 'All of Israel';
 
-  const zoneAlerts = threatAlerts
-    .filter((a) => matchesZone(a, zoneId, isNational))
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  // When national, skip city filtering entirely — use all threat alerts
+  const zoneAlerts = isNational
+    ? threatAlerts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    : threatAlerts
+        .filter((a) => matchesZone(a, zoneId, false))
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   const timeSinceLastMinutes =
     zoneAlerts.length > 0
