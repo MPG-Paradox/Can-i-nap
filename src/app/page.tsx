@@ -82,7 +82,7 @@ function MainApp() {
   const zoneParam = searchParams.get('zone');
   const zoneName = zoneParam ? decodeURIComponent(zoneParam) : NATIONAL_ZONE;
   const zone = useMemo(() => findZoneByName(zoneName), [zoneName]);
-  const isNational = !!(zone && zone.isNational);
+  const isNational = zoneName === NATIONAL_ZONE || zoneName === 'All of Israel' || zoneName?.includes('\u05D9\u05E9\u05E8\u05D0\u05DC') || zoneName?.toLowerCase().includes('all of israel') || !!(zone && zone.isNational);
 
   const [napDuration, setNapDuration] = useState(45);
   const [debouncedDuration, setDebouncedDuration] = useState(45);
@@ -306,6 +306,10 @@ function MainApp() {
     if (latest < 0) return null;
     return Date.now() - latest;
   }, [alerts]);
+
+  // TEMPORARY DEBUG — remove after confirming fix works
+  // eslint-disable-next-line no-console
+  console.log('DEBUG_NATIONAL', { zoneName, isNational, hasZone: !!zone, zoneIsNational: zone?.isNational, globalTimeSinceLastMs, alertsLength: alerts.length });
 
   // Graph time — only update when data/zone/duration/weights change, not every 30s
   // Uses debouncedDuration so graph doesn't recalculate while dragging slider
