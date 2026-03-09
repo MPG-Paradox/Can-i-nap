@@ -151,8 +151,8 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
     <div className="w-full">
       <p className="text-xs uppercase tracking-wide text-slate-400 mb-3">{t.location}</p>
 
-      {/* Quick chips */}
-      <div className="flex gap-2 overflow-x-auto pb-2 pe-4 mb-3 scrollbar-hide">
+      {/* Quick chips — negative margin breaks out of parent px-4 so scroll works with body overflow-x:hidden */}
+      <div className="-mx-4 px-4 flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
         <button
           onClick={handleGeolocate}
           disabled={geoLoading}
@@ -191,6 +191,8 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
             </button>
           );
         })}
+        {/* End spacer so last chip isn't flush against the edge */}
+        <div className="shrink-0 w-4" aria-hidden="true" />
       </div>
 
       {/* Search input */}
