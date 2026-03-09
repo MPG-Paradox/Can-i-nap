@@ -77,6 +77,7 @@ export async function fetchArchiveAlerts(fromDate: string, toDate: string): Prom
   try {
     const url = `https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&fromDate=${fromDate}&toDate=${toDate}`;
     const response = await fetch(url, {
+      headers: OREF_HEADERS,
       signal: AbortSignal.timeout(15000), // Slow endpoint
     });
 

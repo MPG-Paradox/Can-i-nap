@@ -70,6 +70,31 @@ export function addAlert(alert: StoredAlert): void {
   cachedMtimeMs = 0;
 }
 
+// Batch insert — single read/write cycle instead of O(n²) per-alert I/O.
+// Used by fetch-history to import thousands of archive alerts efficiently.
+export function addAlertsBatch(alerts: StoredAlert[]): number {
+  ensureDir();
+  const existing = getAlerts();
+  const ids = new Set(existing.map((a) => a.id));
+  let added = 0;
+
+  const newAlerts: StoredAlert[] = [];
+  for (const alert of alerts) {
+    if (ids.has(alert.id)) continue;
+    if (isNaN(new Date(alert.timestamp).getTime())) continue;
+    ids.add(alert.id);
+    newAlerts.push(alert);
+    added++;
+  }
+
+  if (added === 0) return 0;
+
+  const updated = [...newAlerts, ...existing].slice(0, MAX_ALERTS);
+  fs.writeFileSync(STORE_PATH, JSON.stringify(updated, null, 2), 'utf-8');
+  cachedMtimeMs = 0;
+  return added;
+}
+
 export function getRecentAlerts(hours: number): StoredAlert[] {
   const alerts = getAlerts();
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
