@@ -42,15 +42,6 @@ export default function Footer({ lastUpdateTime, riskPercent, napDuration }: Foo
         {t.share}
       </button>
 
-      <a
-        href="https://buymeacoffee.com/emilelasmar"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium bg-[#FFDD00] text-black hover:bg-[#FFDD00]/90 transition-colors"
-      >
-        ☕ Buy Me a Coffee
-      </a>
-
       <p className="text-xs text-slate-500">{t.disclaimer}</p>
 
       <p className="text-xs text-slate-400">
@@ -79,6 +70,7 @@ export default function Footer({ lastUpdateTime, riskPercent, napDuration }: Foo
           LinkedIn
         </a>
       </p>
+
     </footer>
   );
 }

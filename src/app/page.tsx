@@ -409,6 +409,23 @@ function MainApp() {
               </div>
             )}
 
+            <div className="w-full mt-6 border-t border-slate-800/50 py-8 text-center space-y-2">
+              <p className="text-sm font-semibold text-slate-300">
+                {language === 'he' ? 'נהנים מהאתר?' : 'Enjoying the site?'}
+              </p>
+              <p className="text-xs text-slate-500">
+                {language === 'he' ? 'עזרו לי לשמור עליו פעיל' : 'Help me keep it running'}
+              </p>
+              <a
+                href="https://buymeacoffee.com/emilelasmar"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold bg-[#FFDD00] text-black hover:bg-[#e6c800] transition-colors"
+              >
+                🛏️ Buy me a pillow
+              </a>
+            </div>
+
             <div className="w-full mt-6 stagger-7">
               <CalculationPanel
                 risk={risk}

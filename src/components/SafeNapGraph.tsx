@@ -55,7 +55,7 @@ export default function SafeNapGraph({
         { zoneId, napDurationMinutes: napDuration, alerts, currentTime: time },
         weights
       );
-      const safety = 100 - risk.riskPercent;
+      const safety = Math.round(100 - risk.riskPercent);
       const point: TimelinePoint = {
         time: time.getTime(),
         timeLabel: formatGraphTimeLabel(time, prevTime),
@@ -146,7 +146,7 @@ export default function SafeNapGraph({
                 color: '#e2e8f0',
                 fontSize: '13px',
               }}
-              formatter={(value) => [`${value}%`, t.safety]}
+              formatter={(value) => [`${Math.round(Number(value))}%`, t.safety]}
               labelFormatter={(label) => String(label)}
             />
             {/* Alert markers */}
