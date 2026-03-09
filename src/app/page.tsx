@@ -292,20 +292,20 @@ function MainApp() {
 
   // Independent "time since last threat" — bypasses risk engine zone filtering entirely.
   // Uses ALL threat alerts regardless of zone, so national view always works.
+  // Type-safe: coerces category (string|number) and timestamp (string|Date).
   const globalTimeSinceLastMs = useMemo(() => {
-    const validThreats = alerts.filter(a =>
-      (a.category === 1 || a.category === 2) &&
-      a.timestamp instanceof Date &&
-      !isNaN(a.timestamp.getTime())
-    );
-    if (validThreats.length === 0) return null;
-    let latest = validThreats[0].timestamp.getTime();
-    for (let i = 1; i < validThreats.length; i++) {
-      const t = validThreats[i].timestamp.getTime();
-      if (t > latest) latest = t;
+    if (alerts.length === 0) return null;
+    let latest = -1;
+    for (const a of alerts) {
+      const cat = typeof a.category === 'string' ? parseInt(a.category, 10) : a.category;
+      if (cat !== 1 && cat !== 2) continue;
+      const ts = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp as unknown as string).getTime();
+      if (isNaN(ts)) continue;
+      if (ts > latest) latest = ts;
     }
-    return calcTime.getTime() - latest;
-  }, [alerts, calcTime]);
+    if (latest < 0) return null;
+    return Date.now() - latest;
+  }, [alerts]);
 
   // Graph time — only update when data/zone/duration/weights change, not every 30s
   // Uses debouncedDuration so graph doesn't recalculate while dragging slider
