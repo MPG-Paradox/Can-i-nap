@@ -152,7 +152,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
       <p className="text-xs uppercase tracking-wide text-slate-400 mb-3">{t.location}</p>
 
       {/* Quick chips */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-2 pe-4 mb-3 scrollbar-hide">
         <button
           onClick={handleGeolocate}
           disabled={geoLoading}
