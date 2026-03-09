@@ -62,9 +62,12 @@ function matchesZone(alert: Alert, zoneId: string, isNational: boolean): boolean
 function computeRawFactors(input: RiskInput) {
   const { zoneId, napDurationMinutes, alerts, currentTime } = input;
 
-  // Only count actual threat alerts for risk calculation (cat:1 rockets, cat:2 hostile aircraft).
+  // Only count actual threat alerts with valid timestamps for risk calculation.
   // Cat:14 (pre-alert) and cat:13 (all clear) should NOT inflate risk numbers.
-  const threatAlerts = alerts.filter((a) => a.category === 1 || a.category === 2);
+  // Filter out invalid timestamps to prevent NaN from poisoning sort/arithmetic.
+  const threatAlerts = alerts.filter(
+    (a) => (a.category === 1 || a.category === 2) && !isNaN(a.timestamp.getTime())
+  );
 
   const targetZone = findZoneByName(zoneId);
   const isNational = !!(targetZone && targetZone.isNational);
@@ -195,8 +198,8 @@ export function calculateNapRiskWeighted(
   return {
     riskPercent,
     timeSinceLastMinutes:
-      raw.timeSinceLastMinutes === Infinity ? -1 : Math.round(raw.timeSinceLastMinutes),
-    avgIntervalMinutes: Math.round(raw.avgIntervalMinutes),
+      !isFinite(raw.timeSinceLastMinutes) ? -1 : Math.round(raw.timeSinceLastMinutes),
+    avgIntervalMinutes: isFinite(raw.avgIntervalMinutes) ? Math.round(raw.avgIntervalMinutes) : 720,
     volume24h: raw.volume24h,
     trend: raw.trend,
     dualFrontStatus: raw.dualFrontStatus,

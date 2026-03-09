@@ -9,7 +9,7 @@ interface StatsCardsProps {
 }
 
 function formatTimeSince(totalSeconds: number, t: ReturnType<typeof useLanguage>['t']): string {
-  if (totalSeconds < 0) return '\u2014';
+  if (!isFinite(totalSeconds) || totalSeconds < 0) return '\u2014';
   const d = Math.floor(totalSeconds / 86400);
   const h = Math.floor((totalSeconds % 86400) / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -42,12 +42,14 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
   // risk.timeSinceLastMinutes is from the last calcTime snapshot
   // We don't need the exact live counter — the 30s recalc is close enough
   // tickTime is used just to trigger re-renders for the display
-  const baseSeconds = risk.timeSinceLastMinutes >= 0 ? Math.floor(risk.timeSinceLastMinutes * 60) : -1;
+  const baseSeconds = isFinite(risk.timeSinceLastMinutes) && risk.timeSinceLastMinutes >= 0
+    ? Math.floor(risk.timeSinceLastMinutes * 60) : -1;
   // Suppress unused tickTime warning — it's used to trigger re-renders
   void tickTime;
 
-  const avgHours = risk.avgIntervalMinutes / 60;
-  const avgDisplay = risk.avgIntervalMinutes >= 720
+  const safeAvg = isFinite(risk.avgIntervalMinutes) ? risk.avgIntervalMinutes : 720;
+  const avgHours = safeAvg / 60;
+  const avgDisplay = safeAvg >= 720
     ? `12${t.hours}+`
     : `${avgHours.toFixed(1)}${t.hours}`;
 
