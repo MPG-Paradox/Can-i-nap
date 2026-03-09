@@ -112,7 +112,7 @@ For informational purposes only. This is a statistical model based on historical
 
 - **Inspiration:** [canishower.com](https://canishower.com)
 - **Data source:** [Pikud HaOref](https://www.oref.org.il/)
-- **Built with:** [Claude AI](https://claude.ai) + [Claude Code](https://claude.ai)
+
 
 ## Author
 
