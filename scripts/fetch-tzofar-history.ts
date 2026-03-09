@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StoredAlert } from '../src/lib/types';
 import { classifyAlertSource } from '../src/lib/zones';
+import { parseIsraelDate } from '../src/lib/parse-israel-date';
 
 const STORE_PATH = path.join(__dirname, '..', 'data', 'alerts.json');
 
@@ -66,7 +67,7 @@ function parseGenericAlert(item: unknown): StoredAlert | null {
 
   const rawDate = obj.alertDate || obj.date || obj.timestamp || obj.time || obj.created_at;
   if (!rawDate) return null;
-  const timestamp = new Date(String(rawDate));
+  const timestamp = parseIsraelDate(String(rawDate));
   if (isNaN(timestamp.getTime())) return null;
 
   let cities: string[];

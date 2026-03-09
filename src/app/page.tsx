@@ -304,12 +304,9 @@ function MainApp() {
       if (ts > latest) latest = ts;
     }
     if (latest < 0) return null;
-    return Date.now() - latest;
+    const raw = Date.now() - latest;
+    return raw < 0 ? 0 : raw;
   }, [alerts]);
-
-  // TEMPORARY DEBUG — remove after confirming fix works
-  // eslint-disable-next-line no-console
-  console.log('DEBUG_NATIONAL', { zoneName, isNational, hasZone: !!zone, zoneIsNational: zone?.isNational, globalTimeSinceLastMs, alertsLength: alerts.length });
 
   // Graph time — only update when data/zone/duration/weights change, not every 30s
   // Uses debouncedDuration so graph doesn't recalculate while dragging slider

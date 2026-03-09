@@ -7,6 +7,7 @@ import { fetchArchiveAlerts, fetchAlertHistory } from '../src/lib/oref-client';
 import { classifyAlertSource } from '../src/lib/zones';
 import { addAlertsBatch, getAlerts } from '../src/lib/alert-store';
 import { StoredAlert } from '../src/lib/types';
+import { parseIsraelDate } from '../src/lib/parse-israel-date';
 
 const INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -21,7 +22,7 @@ function processRawAlerts(
 
     const rawDate = obj.alertDate ?? obj.date ?? obj.timestamp;
     if (!rawDate) continue;
-    const timestamp = new Date(String(rawDate));
+    const timestamp = parseIsraelDate(String(rawDate));
     if (isNaN(timestamp.getTime())) continue;
 
     let cities: string[];

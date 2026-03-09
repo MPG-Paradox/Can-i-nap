@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StoredAlert, OrefHistoryItem } from '../src/lib/types';
 import { classifyAlertSource } from '../src/lib/zones';
+import { parseIsraelDate } from '../src/lib/parse-israel-date';
 
 const STORE_PATH = path.join(__dirname, '..', 'data', 'alerts.json');
 
@@ -67,11 +68,12 @@ function parseHistoryItem(item: OrefHistoryItem): StoredAlert | null {
   // Skip "all clear" alerts — not threats
   if (category === 13) return null;
 
-  const timestamp = new Date(item.alertDate).toISOString();
-  const source = classifyAlertSource(cities, category, cities.length, new Date(item.alertDate));
+  const parsed = parseIsraelDate(item.alertDate);
+  const timestamp = parsed.toISOString();
+  const source = classifyAlertSource(cities, category, cities.length, parsed);
 
   return {
-    id: `oref_${new Date(item.alertDate).getTime()}_${cities.join('|').slice(0, 30)}`,
+    id: `oref_${parsed.getTime()}_${cities.join('|').slice(0, 30)}`,
     timestamp,
     category,
     title: item.title || '\u05D9\u05E8\u05D9 \u05E8\u05E7\u05D8\u05D5\u05EA \u05D5\u05D8\u05D9\u05DC\u05D9\u05DD',

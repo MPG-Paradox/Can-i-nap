@@ -3,6 +3,7 @@ import { fetchArchiveAlerts, fetchAlertHistory } from '@/lib/oref-client';
 import { classifyAlertSource } from '@/lib/zones';
 import { addAlertsBatch, getAlerts } from '@/lib/alert-store';
 import { StoredAlert } from '@/lib/types';
+import { parseIsraelDate } from '@/lib/parse-israel-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ function processRawAlerts(
 
     const rawDate = obj.alertDate ?? obj.date ?? obj.timestamp;
     if (!rawDate) continue;
-    const timestamp = new Date(String(rawDate));
+    const timestamp = parseIsraelDate(String(rawDate));
     if (isNaN(timestamp.getTime())) continue;
 
     let cities: string[];
