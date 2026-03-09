@@ -151,12 +151,12 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
     <div className="w-full">
       <p className="text-xs uppercase tracking-wide text-slate-400 mb-3">{t.location}</p>
 
-      {/* Quick chips — negative margin breaks out of parent px-4 so scroll works with body overflow-x:hidden */}
-      <div className="-mx-4 px-4 flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Quick chips */}
+      <div className="flex flex-wrap gap-2 mb-3">
         <button
           onClick={handleGeolocate}
           disabled={geoLoading}
-          className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap shrink-0 ${
+          className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap ${
             geoLoading ? 'opacity-50 cursor-not-allowed border-slate-600 text-slate-400' : 'border-slate-600 text-slate-300 hover:border-amber-400'
           }`}
         >
@@ -164,7 +164,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
         </button>
         <button
           onClick={() => selectZone('\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC')}
-          className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap shrink-0 ${
+          className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap ${
             isNational
               ? 'bg-amber-500/20 border-amber-400 text-amber-300'
               : 'border-slate-600 text-slate-300 hover:border-amber-400'
@@ -181,7 +181,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
             <button
               key={chip.hebrewName}
               onClick={() => selectZone(chip.hebrewName)}
-              className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap shrink-0 ${
+              className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap ${
                 isActive
                   ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                   : 'border-slate-600 text-slate-300 hover:border-amber-400'
@@ -191,8 +191,6 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
             </button>
           );
         })}
-        {/* End spacer so last chip isn't flush against the edge */}
-        <div className="shrink-0 w-4" aria-hidden="true" />
       </div>
 
       {/* Search input */}
