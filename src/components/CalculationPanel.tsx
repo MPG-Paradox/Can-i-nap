@@ -117,11 +117,11 @@ export default function CalculationPanel({ risk, weights, onWeightsChange }: Cal
                   if (allExpanded) return;
                   setExpandedFactor(expandedFactor === key ? null : key);
                 }}
-                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-800/30 transition-colors"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3 hover:bg-slate-800/30 transition-colors"
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${FACTOR_COLORS[key]}`} />
-                <span className="flex-1 text-start text-sm text-slate-200">{factorNames[key]}</span>
-                <span className="text-xs text-slate-400 tabular-nums w-10 text-end">{factor.weight}%</span>
+                <span className="flex-1 text-start text-xs sm:text-sm text-slate-200 truncate">{factorNames[key]}</span>
+                <span className="text-[10px] sm:text-xs text-slate-400 tabular-nums w-8 sm:w-10 text-end">{factor.weight}%</span>
                 <span className={`text-xs font-medium tabular-nums w-10 text-end ${FACTOR_DOT_COLORS[key]}`}>
                   {factor.contribution}%
                 </span>

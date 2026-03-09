@@ -31,7 +31,7 @@ export default function Footer({ lastUpdateTime, riskPercent, napDuration }: Foo
   };
 
   return (
-    <footer className="mt-16 pb-8 px-4 max-w-lg mx-auto text-center space-y-3">
+    <footer className="mt-10 sm:mt-16 pb-6 sm:pb-8 px-4 max-w-lg mx-auto text-center space-y-2 sm:space-y-3">
       <button
         onClick={handleShare}
         className="glass-card rounded-full px-6 py-2.5 text-sm font-medium text-amber-400 border border-amber-500/20 hover:bg-amber-500/10 transition-colors inline-flex items-center gap-2"
@@ -41,6 +41,15 @@ export default function Footer({ lastUpdateTime, riskPercent, napDuration }: Foo
         </svg>
         {t.share}
       </button>
+
+      <a
+        href="https://buymeacoffee.com/emilelasmar"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium bg-[#FFDD00] text-black hover:bg-[#FFDD00]/90 transition-colors"
+      >
+        ☕ Buy Me a Coffee
+      </a>
 
       <p className="text-xs text-slate-500">{t.disclaimer}</p>
 

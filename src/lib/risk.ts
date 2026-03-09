@@ -248,13 +248,15 @@ export function findOptimalWindow(
   currentTime: Date,
   weights: RiskWeights = DEFAULT_WEIGHTS
 ): OptimalWindow {
+  // Always use real current time so results are never in the past
+  const now = new Date();
   let bestRisk = Infinity;
-  let bestStart = currentTime;
+  let bestStart = now;
   let bestOffset = 0;
 
   for (let offsetMinutes = 0; offsetMinutes < 24 * 60; offsetMinutes += 60) {
     const candidateStart = new Date(
-      currentTime.getTime() + offsetMinutes * 60 * 1000
+      now.getTime() + offsetMinutes * 60 * 1000
     );
 
     const result = calculateNapRiskWeighted(
@@ -282,6 +284,11 @@ export function findOptimalWindow(
       bestStart = candidateStart;
       bestOffset = offsetMinutes;
     }
+  }
+
+  // Safety check: ensure result is never in the past
+  if (bestStart.getTime() < now.getTime()) {
+    bestStart = now;
   }
 
   return {

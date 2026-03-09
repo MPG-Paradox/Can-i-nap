@@ -60,35 +60,35 @@ export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
   const trendInfo = trendConfig[risk.trend];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2 sm:gap-3">
       {/* Time since last */}
-      <div className="glass-card rounded-xl p-4">
-        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.timeSinceLast}</p>
-        <p className={`text-2xl font-bold mt-1 tabular-nums ${getTimeSinceColor(baseSeconds / 60)}`}>
+      <div className="glass-card rounded-xl p-3 sm:p-4 min-w-0">
+        <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide truncate">{t.timeSinceLast}</p>
+        <p className={`text-xl sm:text-2xl font-bold mt-1 tabular-nums truncate ${getTimeSinceColor(baseSeconds / 60)}`}>
           {baseSeconds < 0 ? t.noAlertsEver : formatTimeSince(baseSeconds, t)}
         </p>
       </div>
 
       {/* Average interval */}
-      <div className="glass-card rounded-xl p-4">
-        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.avgInterval}</p>
-        <p className={`text-2xl font-bold mt-1 ${risk.avgIntervalMinutes >= 720 ? 'text-risk-green' : 'text-slate-100'}`}>
+      <div className="glass-card rounded-xl p-3 sm:p-4 min-w-0">
+        <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide truncate">{t.avgInterval}</p>
+        <p className={`text-xl sm:text-2xl font-bold mt-1 truncate ${risk.avgIntervalMinutes >= 720 ? 'text-risk-green' : 'text-slate-100'}`}>
           {avgDisplay}
         </p>
       </div>
 
       {/* 24h alert count */}
-      <div className="glass-card rounded-xl p-4">
-        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.alertCount24h}</p>
-        <p className={`text-2xl font-bold mt-1 ${getVolumeColor(risk.volume24h)}`}>
+      <div className="glass-card rounded-xl p-3 sm:p-4 min-w-0">
+        <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide truncate">{t.alertCount24h}</p>
+        <p className={`text-xl sm:text-2xl font-bold mt-1 truncate ${getVolumeColor(risk.volume24h)}`}>
           {risk.volume24h}
         </p>
       </div>
 
       {/* Trend */}
-      <div className="glass-card rounded-xl p-4">
-        <p className="text-xs text-slate-400 uppercase tracking-wide">{t.trend}</p>
-        <p className={`text-2xl font-bold mt-1 ${trendInfo.color}`}>
+      <div className="glass-card rounded-xl p-3 sm:p-4 min-w-0">
+        <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide truncate">{t.trend}</p>
+        <p className={`text-xl sm:text-2xl font-bold mt-1 truncate ${trendInfo.color}`}>
           <span className="me-1">{trendInfo.arrow}</span>
           {trendInfo.label}
         </p>

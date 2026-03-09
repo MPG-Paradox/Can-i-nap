@@ -67,8 +67,8 @@ export default function SafeNapGraph({
 
       if (offset === 0) nIdx = points.length - 1;
 
-      // Best future time = highest safety
-      if (offset >= 0 && safety > bestSafety) {
+      // Best future time = highest safety (must be in the future)
+      if (offset >= 0 && safety > bestSafety && time.getTime() >= Date.now()) {
         bestSafety = safety;
         bestTime = time;
       }
@@ -115,7 +115,7 @@ export default function SafeNapGraph({
         </div>
       )}
 
-      <div className="h-[250px] sm:h-[300px]">
+      <div className="h-[200px] sm:h-[250px] md:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>

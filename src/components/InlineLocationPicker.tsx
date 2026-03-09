@@ -152,11 +152,11 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
       <p className="text-xs uppercase tracking-wide text-slate-400 mb-3">{t.location}</p>
 
       {/* Quick chips */}
-      <div className="flex gap-2 flex-wrap mb-3">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
         <button
           onClick={handleGeolocate}
           disabled={geoLoading}
-          className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
+          className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap shrink-0 ${
             geoLoading ? 'opacity-50 cursor-not-allowed border-slate-600 text-slate-400' : 'border-slate-600 text-slate-300 hover:border-amber-400'
           }`}
         >
@@ -164,7 +164,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
         </button>
         <button
           onClick={() => selectZone('\u05DB\u05DC \u05D9\u05E9\u05E8\u05D0\u05DC')}
-          className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
+          className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap shrink-0 ${
             isNational
               ? 'bg-amber-500/20 border-amber-400 text-amber-300'
               : 'border-slate-600 text-slate-300 hover:border-amber-400'
@@ -181,7 +181,7 @@ export default function InlineLocationPicker({ currentZone, onZoneChange }: Inli
             <button
               key={chip.hebrewName}
               onClick={() => selectZone(chip.hebrewName)}
-              className={`text-xs rounded-full px-3 py-1.5 border transition-colors ${
+              className={`text-xs rounded-full px-3 py-1.5 border transition-colors whitespace-nowrap shrink-0 ${
                 isActive
                   ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                   : 'border-slate-600 text-slate-300 hover:border-amber-400'
