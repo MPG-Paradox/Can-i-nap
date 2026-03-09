@@ -290,6 +290,23 @@ function MainApp() {
     );
   }, [zone, napDuration, alerts, calcTime, weights]);
 
+  // Independent "time since last threat" — bypasses risk engine zone filtering entirely.
+  // Uses ALL threat alerts regardless of zone, so national view always works.
+  const globalTimeSinceLastMs = useMemo(() => {
+    const validThreats = alerts.filter(a =>
+      (a.category === 1 || a.category === 2) &&
+      a.timestamp instanceof Date &&
+      !isNaN(a.timestamp.getTime())
+    );
+    if (validThreats.length === 0) return null;
+    let latest = validThreats[0].timestamp.getTime();
+    for (let i = 1; i < validThreats.length; i++) {
+      const t = validThreats[i].timestamp.getTime();
+      if (t > latest) latest = t;
+    }
+    return calcTime.getTime() - latest;
+  }, [alerts, calcTime]);
+
   // Graph time — only update when data/zone/duration/weights change, not every 30s
   // Uses debouncedDuration so graph doesn't recalculate while dragging slider
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -393,7 +410,7 @@ function MainApp() {
             </div>
 
             <div className="w-full mt-6 stagger-5">
-              <StatsCards risk={risk} tickTime={tickTime} />
+              <StatsCards risk={risk} tickTime={tickTime} isNational={isNational} globalTimeSinceLastMs={globalTimeSinceLastMs} />
             </div>
 
             {graphReady && (

@@ -6,6 +6,8 @@ import { RiskResult } from '@/lib/types';
 interface StatsCardsProps {
   risk: RiskResult;
   tickTime: Date;
+  isNational?: boolean;
+  globalTimeSinceLastMs?: number | null;
 }
 
 function formatTimeSince(totalSeconds: number, t: ReturnType<typeof useLanguage>['t']): string {
@@ -35,15 +37,19 @@ function getVolumeColor(count: number): string {
   return 'text-risk-red';
 }
 
-export default function StatsCards({ risk, tickTime }: StatsCardsProps) {
+export default function StatsCards({ risk, tickTime, isNational, globalTimeSinceLastMs }: StatsCardsProps) {
   const { t } = useLanguage();
 
-  // Use tickTime to compute live seconds since last alert
-  // risk.timeSinceLastMinutes is from the last calcTime snapshot
-  // We don't need the exact live counter — the 30s recalc is close enough
-  // tickTime is used just to trigger re-renders for the display
-  const baseSeconds = isFinite(risk.timeSinceLastMinutes) && risk.timeSinceLastMinutes >= 0
-    ? Math.floor(risk.timeSinceLastMinutes * 60) : -1;
+  // For national view, use globalTimeSinceLastMs (bypasses risk engine zone filtering).
+  // For specific zones, use risk.timeSinceLastMinutes from the risk engine.
+  let baseSeconds: number;
+  if (isNational && globalTimeSinceLastMs != null) {
+    baseSeconds = Math.floor(globalTimeSinceLastMs / 1000);
+  } else if (isFinite(risk.timeSinceLastMinutes) && risk.timeSinceLastMinutes >= 0) {
+    baseSeconds = Math.floor(risk.timeSinceLastMinutes * 60);
+  } else {
+    baseSeconds = -1;
+  }
   // Suppress unused tickTime warning — it's used to trigger re-renders
   void tickTime;
 
