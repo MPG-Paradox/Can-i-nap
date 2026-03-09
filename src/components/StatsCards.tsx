@@ -18,9 +18,9 @@ function formatTimeSince(totalSeconds: number, t: ReturnType<typeof useLanguage>
   const s = Math.floor(totalSeconds % 60);
 
   if (d > 0) return t.daysAgo.replace('{days}', String(d));
-  if (h > 0) return `${h}${t.hours} ${m}${t.minutesShort}`;
-  if (m > 0) return `${m}${t.minutesShort} ${s}${t.secondsShort}`;
-  return `${s}${t.secondsShort}`;
+  if (h > 0) return `${h} ${t.hours} ${m} ${t.minutesShort}`;
+  if (m > 0) return `${m} ${t.minutesShort} ${s} ${t.secondsShort}`;
+  return `${s} ${t.secondsShort}`;
 }
 
 function getTimeSinceColor(minutes: number): string {
@@ -56,8 +56,8 @@ export default function StatsCards({ risk, tickTime, isNational, globalTimeSince
   const safeAvg = isFinite(risk.avgIntervalMinutes) ? risk.avgIntervalMinutes : 720;
   const avgHours = safeAvg / 60;
   const avgDisplay = safeAvg >= 720
-    ? `12${t.hours}+`
-    : `${avgHours.toFixed(1)}${t.hours}`;
+    ? `12 ${t.hours}+`
+    : `${avgHours.toFixed(1)} ${t.hours}`;
 
   const trendConfig = {
     increasing: { label: t.increasing, arrow: '\u2191', color: 'text-risk-red' },
@@ -72,7 +72,7 @@ export default function StatsCards({ risk, tickTime, isNational, globalTimeSince
       {/* Time since last */}
       <div className="glass-card rounded-xl p-3 sm:p-4 min-w-0">
         <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide truncate">{t.timeSinceLast}</p>
-        <p className={`text-xl sm:text-2xl font-bold mt-1 tabular-nums truncate ${getTimeSinceColor(baseSeconds / 60)}`}>
+        <p dir="ltr" className={`text-xl sm:text-2xl font-bold mt-1 tabular-nums truncate text-end ${getTimeSinceColor(baseSeconds / 60)}`}>
           {baseSeconds < 0 ? t.noAlertsEver : formatTimeSince(baseSeconds, t)}
         </p>
       </div>

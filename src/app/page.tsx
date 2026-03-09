@@ -438,7 +438,7 @@ function MainApp() {
                 href="https://buymeacoffee.com/emilelasmar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold bg-[#FFDD00] text-black hover:bg-[#e6c800] transition-colors"
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold border border-[#D97706] text-[#D97706] bg-transparent hover:bg-[rgba(217,119,6,0.15)] transition-colors"
               >
                 🛏️ Buy me a pillow
               </a>
