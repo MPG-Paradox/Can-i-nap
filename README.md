@@ -1,136 +1,121 @@
-# Can I Nap?
+# 🛏️ Can I Nap? | ?אפשר לנמנם
 
-**Calculate the probability your nap will be interrupted by a rocket alert.**
+Real-time nap risk calculator for Israelis during the Iran war (Feb 28, 2026 – present).
 
-## The Problem
+**Live:** [caninap.online](https://caninap.online)
 
-Israeli civilians during the Iran war (Feb 28, 2026 -- present) need to know if they can safely nap without being woken by a Pikud HaOref rocket alert. Inspired by [canishower.com](https://canishower.com) but for longer sleep windows (10--120 min), where risk compounds non-linearly with duration.
+Calculates the probability that a nap of X minutes will be interrupted by a Pikud HaOref rocket alert, based on your location and real alert data.
+
+Inspired by [canishower.com](https://canishower.com) — same concept, different math. Naps (10–120 min) compound risk non-linearly compared to showers.
 
 ## How It Works
 
-The app polls the Pikud HaOref real-time alert API and calculates interruption probability using a **Poisson-based risk model**:
+The app polls real Pikud HaOref alert data and applies Poisson statistics to estimate interruption probability.
 
-1. **Alert frequency** -- average interval between recent alerts in your zone
-2. **Recency** -- exponential decay from the last alert (recent = higher risk)
-3. **Trend** -- is alert frequency increasing or decreasing?
-4. **Dual-front escalation** -- simultaneous Iran (ballistic missiles) + Hezbollah (rockets) activity multiplies risk
-5. **Time-of-day bias** -- historical attack patterns (night hours riskier)
+**Risk model:** P(interruption) = 1 - e^(-duration/avgInterval)
 
-The core formula uses the exponential CDF: `P = 1 - e^(-duration/avgInterval)`, then applies weighted context-aware multipliers. Result is clamped to 0--99%.
+Five weighted factors feed into the final risk score:
+
+- **Base Poisson model** (40%) — exponential CDF from average alert interval
+- **Trend** (15%) — compares last 3h vs prior 3h alert frequency
+- **Recency** (20%) — exponential decay from time since last alert
+- **Dual-front escalation** (15%) — tracks Iran ballistic missiles and Hezbollah rockets simultaneously
+- **Time-of-day bias** (10%) — historical hourly distribution of alerts
+
+The dual-front system classifies alerts by source using pre-alert correlation: cat:14 early warnings (which always precede Iranian ballistic missiles but are physically impossible for Hezbollah rockets) are used to definitively identify Iranian attacks.
 
 ## Features
 
-- **Real-time risk calculation** based on live Pikud HaOref data
-- **Animated shader background** -- subtle aurora effect via Three.js WebGL
-- **Glass morphism UI** -- frosted glass cards with backdrop blur
-- **Dual-front tracking** -- Iran vs Hezbollah with escalation levels
-- **Safety timeline graph** -- 24h safety % chart with best nap time
-- **Adjustable risk weights** -- tune each factor's contribution
-- **3-language support** -- Hebrew, English, Arabic with full RTL/LTR
-- **Active threat override** -- visual-only alert screen (no audio)
-- **Pre-alert detection** -- category 14 early warnings (~2 min before impact)
-- **PWA installable** -- add to home screen, service worker caching
-- **Mobile-first dark UI** -- designed for 375px+, calming sleep-friendly theme
-- **Share button** -- native share on mobile, clipboard copy on desktop
+- Risk dial with color-coded severity (green → yellow → orange → red)
+- Duration slider (10–120 min) with instant risk recalculation
+- 1,450+ Israeli cities from the Pikud HaOref database, plus 8 regional aggregates
+- "All of Israel" national view
+- 24-hour safety timeline graph showing optimal nap windows
+- Live-ticking "time since last alert" counter
+- Pre-alert banner for cat:14 early warnings
+- Full-screen active threat overlay with shelter countdown
+- Adjustable risk factor weights
+- Hebrew (RTL) + English (LTR) language toggle
+- PWA with offline support
+- WebGL animated background
 
 ## Tech Stack
 
-- **Next.js 14** (App Router) with TypeScript (strict mode)
-- **Tailwind CSS** -- dark theme, glass morphism, RTL utilities
-- **Three.js** -- WebGL shader background (lazy-loaded, 30fps cap)
-- **Recharts** -- safety timeline visualization
-- **Pikud HaOref API** -- real-time + historical alerts
-- **SSE** -- Server-Sent Events for real-time alert streaming
-- **File-based alert store** (Supabase migration planned)
+- **Framework:** Next.js 14 (App Router), TypeScript (strict), Tailwind CSS
+- **Charts:** Recharts (lazy-loaded)
+- **3D:** Three.js/WebGL (lazy-loaded)
+- **Data:** Pikud HaOref API (real-time + archive endpoints)
+- **Hosting:** Kamatera VPS, Tel Aviv (Israeli IP required for Oref API)
+- **Process manager:** PM2 (3 processes: app, poller, cron)
 
-## Getting Started
+## Architecture
 
-```bash
-git clone <repo-url>
-cd CaniNap
-npm install
-npx tsx scripts/seed.ts   # Seed sample alert data
-npm run dev               # Start dev server at localhost:3000
 ```
-
-> **Note:** The Pikud HaOref API is geo-blocked to Israeli IPs. For local dev in Israel it works out of the box. For production, you need an Israeli VPS or GCP `me-west1` VM as a polling proxy.
+Oref API (alerts.json) → poll-live.ts (every 3s) → data/alerts.json
+Oref Archive API → cron-fetch.ts (every 2m) → data/alerts.json
+Browser ← /api/alerts ← alert-store.ts ← data/alerts.json
+Browser ← /api/sse (EventSource) ← real-time push
+```
 
 ## Project Structure
 
 ```
 src/
-├── app/
-│   ├── layout.tsx              # Root layout -- RTL, dark theme, PWA, SEO
-│   ├── page.tsx                # Single-page dashboard
-│   ├── error.tsx               # Error boundary -- catches crashes gracefully
-│   └── api/
-│       ├── alerts/route.ts     # GET stored alerts by time range
-│       ├── fetch-history/      # One-time Oref history sync
-│       ├── poll/route.ts       # Poll Oref API and store new alerts
-│       └── sse/route.ts        # SSE endpoint for real-time alerts
-├── components/
-│   ├── RiskDial.tsx            # Animated ring with color-coded glow
-│   ├── RiskMessage.tsx         # Contextual risk description
-│   ├── StatsCards.tsx          # Time since last, avg interval, 24h count, trend
-│   ├── DualFrontCard.tsx       # Iran vs Hezbollah escalation status
-│   ├── SafeNapGraph.tsx        # 24h safety % timeline (Recharts)
-│   ├── CalculationPanel.tsx    # Expandable weight sliders
-│   ├── DurationButtons.tsx     # 20/45/90/custom nap duration
-│   ├── InlineLocationPicker.tsx # Fuzzy search + quick chips + geolocation
-│   ├── ActiveThreatOverlay.tsx # Full-screen red alert overlay
-│   ├── ShareButton.tsx         # Native share / clipboard copy
-│   ├── ConnectionStatus.tsx    # Connection + data freshness indicator
-│   ├── LanguageToggle.tsx      # he/en language switch
-│   └── ui/
-│       └── AnimatedBackground.tsx # Three.js WebGL aurora shader
-├── lib/
-│   ├── types.ts                # All TypeScript interfaces
-│   ├── zones.ts                # Zone definitions + fuzzy matching
-│   ├── risk.ts                 # Poisson risk engine + optimal window
-│   ├── dual-front.ts           # Dual-front escalation detection
-│   ├── oref-client.ts          # Pikud HaOref API client
-│   ├── alert-store.ts          # File-based JSON alert store
-│   ├── use-sse.ts              # SSE React hook
-│   ├── utils.ts                # Formatting helpers
-│   └── i18n/                   # Hebrew + English translations
-public/
-├── manifest.json               # PWA manifest
-├── sw.js                       # Service worker (network-first API, cache-first static)
-└── icon.svg                    # Moon/stars app icon
+├── app/ — Next.js pages + API routes (page.tsx, api/alerts, api/poll, api/fetch-history, api/sse)
+├── components/ — 13 React components (RiskDial, StatsCards, SafeNapGraph, CalculationPanel, ActiveThreatOverlay, AnimatedBackground, etc.)
+└── lib/ — 14 modules (risk.ts, zones.ts, zones-generated.ts, oref-client.ts, alert-store.ts, dual-front.ts, pre-alert-tracker.ts, parse-israel-date.ts, i18n/)
+
+scripts/ — 9 utility scripts (cron-fetch, poll-live, fetch-oref-history, fetch-tzofar-history, etc.)
+__tests__/ — 8 test files, 78 tests
 ```
 
-## API Routes
+## Data
 
-| Route | Method | Description |
-|---|---|---|
-| `/api/alerts?hours=24` | GET | Returns stored alerts from the last N hours (max 168) |
-| `/api/poll` | GET | Polls Oref API for active alerts + syncs history |
-| `/api/fetch-history` | GET | One-time history sync from Oref 24h endpoint |
-| `/api/sse` | GET | SSE endpoint for real-time alert streaming |
+- **Source:** Pikud HaOref (oref.org.il)
+- **Coverage:** Feb 28, 2026 – present
+- **Volume:** 6,500+ alerts (2,000+ threat alerts, 4,000+ pre-alerts)
+- **996 unique cities** affected since war start
 
-## Roadmap
+## Running Locally
 
-- [x] Project structure, risk engine, zones, poller, i18n, tests
-- [x] Single-page dashboard (risk dial, duration, stats, location picker)
-- [x] Safety timeline graph with best nap time
-- [x] Real-time SSE + active threat overlay + pre-alert banner
-- [x] Full i18n wiring + language toggle (he/en)
-- [x] Dual-front tracking with zone-specific counts
-- [x] Auto-fetch data on startup
-- [x] Security audit + QA report
-- [x] Animated shader background (Three.js WebGL)
-- [x] Glass morphism cards + staggered load animations
-- [x] Risk dial glow effects
-- [x] PWA (manifest, service worker, installable)
-- [x] SEO (Open Graph, Twitter Card, meta tags)
-- [x] Share button (native share + clipboard)
-- [x] Error boundary
-- [ ] Arabic language support
-- [ ] Supabase migration (replace file store)
-- [ ] Deploy to Vercel + Israeli poller server
+Requires an Israeli IP for the Oref API.
+```bash
+git clone https://github.com/MPG-Paradox/Can-i-nap.git
+cd Can-i-nap
+npm install
+npm run dev
+```
+
+## Production Deployment
+```bash
+npm run build
+pm2 start ecosystem.config.js
+pm2 save
+```
+
+The ecosystem.config.js runs 3 processes:
+- caninap — Next.js app on port 3000
+- caninap-poller — Real-time 3s poll
+- caninap-cron — Archive sync every 2 minutes
+
+## Tests
+```bash
+npm test
+# 78 tests across 8 suites
+```
 
 ## Disclaimer
 
-**For informational purposes only. Always follow Pikud HaOref / Home Front Command instructions. Download the official Pikud HaOref app.**
+For informational purposes only. This is a statistical model based on historical alert data. Always follow Pikud HaOref instructions.
 
-MIT
+## Credits
+
+- **Inspiration:** [canishower.com](https://canishower.com)
+- **Data source:** [Pikud HaOref](https://www.oref.org.il/)
+- **Built with:** [Claude AI](https://claude.ai) + [Claude Code](https://claude.ai)
+
+## Author
+
+**Emil El Asmar** — Data Science Student
+- [LinkedIn](https://www.linkedin.com/in/emil-el-asmar-59a4a629a/)
+- [GitHub](https://github.com/MPG-Paradox)
