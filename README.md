@@ -1,6 +1,6 @@
 # 🛏️ Can I Nap? | ?אפשר לנמנם
 
-Real-time nap risk calculator for Israelis during the Iran war (Feb 28, 2026 – present).
+Real-time nap risk calculator for Israelis during the ongoing conflict with Iran(Feb 28, 2026 – present).
 
 **Live:** [caninap.online](https://caninap.online)
 
